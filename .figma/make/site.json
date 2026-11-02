@@ -1,0 +1,10 @@
+{
+  "description": "A customizable ERP and CRM platform for businesses to manage sales, inventory, accounting, GST, and customer workflows, with centralized controls for industry-specific setups.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
