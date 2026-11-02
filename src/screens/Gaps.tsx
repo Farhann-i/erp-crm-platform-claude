@@ -4,6 +4,7 @@ import { useApp, set, toast } from '../lib/app'
 import { inr, inr0, today, dmy } from '../lib/fmt'
 import { Btn, PageHead, Field, Seg, Tabs, Toggle, Money, Status, DataTable, Empty, type Col } from '../ui/kit'
 import { USERS } from '../shell/ctx'
+import { rightsFor, useRole } from '../lib/rights'
 import type { Item, Party } from '../lib/data'
 
 type Row = { id: string; [k: string]: string | number }
@@ -85,7 +86,6 @@ export function DayClose() {
 
 /* ---------- User rights matrix ---------- */
 const ACTS = ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Export']
-const DEFAULT_RIGHTS: Record<string, string> = { Owner: 'VCEDAX', Accountant: 'VCEX', Cashier: 'VC', 'Super admin': 'VCEDAX' }
 export function Rights() {
   const menu = useApp((s) => s.draft.menu)
   const saved = (useApp((s) => s.rows.rights) ?? EMPTY) as Row[]
@@ -93,9 +93,11 @@ export function Rights() {
   const [role, setRole] = useState(roles[2])
   const [q, setQ] = useState('')
   const screens = menu.flatMap((g) => g.items.map((i) => ({ ...i, group: g.label }))).filter((i) => i.label.toLowerCase().includes(q.toLowerCase()))
-  const get = (route: string) => String(saved.find((r) => r.id === `${role}|${route}`)?.v ?? (role === 'Cashier' ? (['billing', 'held', 'returns', 'ask'].includes(route) ? 'VC' : '') : DEFAULT_RIGHTS[role]))
+  const me = useRole()
+  const get = (route: string) => rightsFor(role, route, saved as never)
   const toggle = (route: string, a: string) => {
     if (role === 'Super admin') return toast('Super admin always has full rights.', 'info')
+    if (role === me && (route === 'rights' || route === 'users')) return toast('You cannot remove your own access to this screen. Ask another owner.', 'warn')
     const k = a === 'Export' ? 'X' : a[0] === 'D' ? 'D' : a[0] === 'A' ? 'A' : a[0] === 'E' ? 'E' : a[0]
     const cur = get(route)
     let nx = cur.includes(k) ? cur.replace(k, '') : cur + k
@@ -106,7 +108,7 @@ export function Rights() {
   const letter = (a: string) => (a === 'Export' ? 'X' : a[0])
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <PageHead title="Rights matrix" crumbs={['Tools', 'Rights matrix']} sub="Choose what each role can see and do on every screen. Taking away View hides the screen.">
+      <PageHead title="Rights matrix" crumbs={['Tools', 'Rights matrix']} sub="Choose what each role can see and do on every screen. Changes apply at once: screens without View leave the menu, and buttons without the right are disabled.">
         <Btn onClick={() => { set((s) => ({ rows: { ...s.rows, rights: ((s.rows.rights ?? []) as Row[]).filter((r) => !String(r.id).startsWith(role + '|')) } })); toast(`${role} is back to the standard rights.`) }}>Reset {role}</Btn>
       </PageHead>
       <div className="px-5 pb-3 flex items-center gap-3 flex-wrap"><Seg label="Role" value={role} onChange={setRole} opts={roles.map((r) => ({ id: r, label: r }))} /><input aria-label="Search screens" className="inp w-56" placeholder="Search screens" value={q} onChange={(e) => setQ(e.target.value)} /></div>

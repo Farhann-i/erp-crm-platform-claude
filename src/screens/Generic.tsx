@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { useApp, set, toast, go, term } from '../lib/app'
 import { inr0, today, dmy } from '../lib/fmt'
 import { MORE_SPECS } from './Gaps'
+import { useCan } from '../lib/rights'
 import { Btn, DataTable, Drawer, Field, PageHead, Status, Confirm, useT, type Col } from '../ui/kit'
 
 type Row = { id: string; [k: string]: string | number }
@@ -79,6 +80,7 @@ export function Generic({ route }: { route: string }) {
   const rows = (stored ?? spec.seed) as Row[]
   const [open, setOpen] = useState<Row | null>(null)
   const [adding, setAdding] = useState(false)
+  const can = useCan()
   const [editId, setEditId] = useState<string | null>(null)
   const items = useApp((x) => x.items)
   const parties = useApp((x) => x.parties)
@@ -106,11 +108,11 @@ export function Generic({ route }: { route: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <PageHead title={term(c, spec.title)} sub={term(c, spec.sub)} crumbs={[spec.group, term(c, spec.title)]}>
-        {spec.newLabel && <Btn kind="primary" icon="plus" onClick={() => { setAdding(true); setEditId(null); setErrs({}); setV({}) }}>{term(c, spec.newLabel)}</Btn>}
+        {spec.newLabel && <Btn needs="C" kind="primary" icon="plus" onClick={() => { setAdding(true); setEditId(null); setErrs({}); setV({}) }}>{term(c, spec.newLabel)}</Btn>}
       </PageHead>
-      <DataTable name="records" rows={rows} cols={cols} onOpen={setOpen} bulk={[...(spec.flow?.[0] ? [{ label: `${spec.flow[0].label} selected`, icon: 'check', run: (ids: string[]) => { const f0 = spec.flow![0]; save(rows.map((r) => (ids.includes(r.id) && r.status === f0.from ? { ...r, status: f0.to } : r))); toast(`${ids.length} selected. Rows not in "${f0.from}" were left as they are.`) } }] : []), ...(spec.editable ? [{ label: 'Remove selected', icon: 'trash', run: (ids: string[]) => { save(rows.filter((r) => !ids.includes(r.id))); toast(`${ids.length} removed.`) } }] : [])]} filter={spec.filterKey ? { label: 'State', get: (r) => String(r[spec.filterKey!]), opts: [...new Set(rows.map((r) => String(r[spec.filterKey!])))] } : undefined} />
+      <DataTable name="records" rows={rows} cols={cols} onOpen={setOpen} bulk={[...(can('E') && spec.flow?.[0] ? [{ label: `${spec.flow[0].label} selected`, icon: 'check', run: (ids: string[]) => { const f0 = spec.flow![0]; save(rows.map((r) => (ids.includes(r.id) && r.status === f0.from ? { ...r, status: f0.to } : r))); toast(`${ids.length} selected. Rows not in "${f0.from}" were left as they are.`) } }] : []), ...(spec.editable && can('D') ? [{ label: 'Remove selected', icon: 'trash', run: (ids: string[]) => { save(rows.filter((r) => !ids.includes(r.id))); toast(`${ids.length} removed.`) } }] : [])]} filter={spec.filterKey ? { label: 'State', get: (r) => String(r[spec.filterKey!]), opts: [...new Set(rows.map((r) => String(r[spec.filterKey!])))] } : undefined} />
       <Drawer open={!!open} onClose={() => setOpen(null)} title={String(open?.no ?? open?.name ?? open?.party ?? open?.wf ?? 'Details')}
-        foot={open && <>{spec.editable && <Btn onClick={() => { setV(Object.fromEntries(Object.entries(open).filter(([k]) => spec.fields?.some((f) => f.id === k)).map(([k, x]) => [k, String(x)]))); setEditId(open.id); setOpen(null); setAdding(true) }}>Edit</Btn>}{spec.cancelable && open.status !== 'Cancelled' && open.status !== 'Converted' && <Btn kind="danger" onClick={() => setCancel(open)}>Cancel with reason</Btn>}{actions.map((a) => <Btn key={a.label} kind="primary" onClick={() => { patch(open.id, { status: a.to }); toast(`${a.label}: done.${a.label.includes('simulated') ? ' No external system was contacted.' : ''}`) }}>{a.label}</Btn>)}</>}>
+        foot={open && <>{spec.editable && <Btn needs="E" onClick={() => { setV(Object.fromEntries(Object.entries(open).filter(([k]) => spec.fields?.some((f) => f.id === k)).map(([k, x]) => [k, String(x)]))); setEditId(open.id); setOpen(null); setAdding(true) }}>Edit</Btn>}{spec.cancelable && open.status !== 'Cancelled' && open.status !== 'Converted' && <Btn needs="D" kind="danger" onClick={() => setCancel(open)}>Cancel with reason</Btn>}{actions.map((a) => <Btn key={a.label} needs={/approv/i.test(a.label) ? 'A' : 'E'} kind="primary" onClick={() => { patch(open.id, { status: a.to }); toast(`${a.label}: done.${a.label.includes('simulated') ? ' No external system was contacted.' : ''}`) }}>{a.label}</Btn>)}</>}>
         {open && <div className="space-y-4"><div className="flex items-center gap-2"><Status s={String(open.status)} /><span className="text-xs muted">Posted records cannot be edited. Corrections are made by reversal.</span></div>
           <dl className="grid grid-cols-[130px_1fr] gap-y-2 text-[13px]">{spec.cols.filter(([k]) => k !== 'status').map(([k, l, ty]) => <Fragment key={k}><dt className="muted">{term(c, l)}</dt><dd>{ty === 'money' ? inr0(+open[k]) : ty === 'date' && open[k] ? dmy(String(open[k])) : String(open[k] ?? '')}</dd></Fragment>)}</dl>
           {actions.length === 0 && <p className="text-xs muted">No further steps from this state.</p>}</div>}

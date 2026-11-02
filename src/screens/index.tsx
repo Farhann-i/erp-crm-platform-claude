@@ -1,5 +1,6 @@
 import { useApp } from '../lib/app'
 import { Restricted } from '../ui/kit'
+import { RouteCtx, useCan } from '../lib/rights'
 import { Billing, HeldScreen } from './Billing'
 import { DaySheet } from './DaySheet'
 import { VoucherEntry } from './Voucher'
@@ -14,6 +15,17 @@ import { DayClose, Rights, Labels, ImportData, ReturnFromBill } from './Gaps'
 const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables', balance: 'balance', cashflow: 'cashflow', stockledger: 'stockledger' }
 
 export function Screen({ route }: { route: string }) {
+  return <RouteCtx.Provider value={route}><Gate route={route} /></RouteCtx.Provider>
+}
+
+function Gate({ route }: { route: string }) {
+  const can = useCan(route)
+  const known = useApp((s) => s.draft.menu.some((g) => g.items.some((i) => i.route === route)))
+  if (known && !can('V')) return <Restricted what={`Your role (${can.role}) has no View right on this screen. The owner can change this in Rights matrix.`} />
+  return <Inner route={route} />
+}
+
+function Inner({ route }: { route: string }) {
   const c = useApp((s) => s.draft)
   const mode = useApp((s) => s.mode)
   const item = c.menu.flatMap((g) => g.items).find((i) => i.route === route)

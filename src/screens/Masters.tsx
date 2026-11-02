@@ -60,7 +60,7 @@ export function ItemMaster() {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <PageHead title={`${t('{item}')} master`} sub="Identity, units, tax, barcodes and stock in one record. Fields follow your Admin Studio form design." crumbs={['Stock', `${t('{item}')} master`]}>
-        <Btn kind="primary" icon="plus" onClick={() => { setOpen('new'); setTab('identity') }}>New {t('{item}').toLowerCase()}</Btn>
+        <Btn needs="C" kind="primary" icon="plus" onClick={() => { setOpen('new'); setTab('identity') }}>New {t('{item}').toLowerCase()}</Btn>
       </PageHead>
       <DataTable name={t('{items}').toLowerCase()} rows={items} onOpen={(r) => { setOpen(r.id); setTab('identity'); select('item', r.id) }} filter={{ label: 'Category', get: (r) => r.category, opts: [...new Set(items.map((i) => i.category))] }}
         bulk={[{ label: 'Raise rates 5%', icon: 'trend', run: (ids) => { set({ items: items.map((i) => (ids.includes(i.id) ? { ...i, rate: Math.round(i.rate * 1.05) } : i)) }); toast(`Rates raised for ${ids.length} ${t('{items}').toLowerCase()}.`) } }]}
@@ -159,7 +159,7 @@ export function Parties() {
   return (
     <div className="flex-1 min-h-0 flex">
       <div className={`${p ? 'w-[380px] border-r border-rule' : 'flex-1'} shrink-0 min-h-0 flex flex-col`}>
-        <PageHead title={`${t('{customer}')} and ${t('{supplier}').toLowerCase()} 360`} crumbs={['People']}><Btn kind="primary" icon="plus" onClick={() => setAdding(true)}>New party</Btn></PageHead>
+        <PageHead title={`${t('{customer}')} and ${t('{supplier}').toLowerCase()} 360`} crumbs={['People']}><Btn needs="C" kind="primary" icon="plus" onClick={() => setAdding(true)}>New party</Btn></PageHead>
         {layout === 'cards' ? (
           <div className="scroll flex-1 px-5 pb-5 grid gap-3 content-start" style={{ gridTemplateColumns: p ? '1fr' : 'repeat(auto-fill,minmax(260px,1fr))' }}>
             {list.map((x) => <button key={x.id} onClick={() => open(x.id)} aria-pressed={x.id === sel} className={`panel p-3 text-left hover:border-neel ${x.id === sel ? 'border-neel' : ''}`}><div className="font-medium">{x.name}</div><div className="text-xs muted">{x.city} · {x.kind === 'customer' ? t('{customer}') : t('{supplier}')}</div><div className="mt-2"><Bal v={x.balance} ctx="dues" party /></div></button>)}

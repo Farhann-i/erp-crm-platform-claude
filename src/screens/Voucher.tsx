@@ -76,7 +76,7 @@ export function VoucherEntry() {
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 scroll">
         <PageHead title={`${type} voucher`} sub="One form for every voucher type. Switch with the function keys. Post is enabled when debit equals credit." crumbs={['Books', 'Voucher entry']}>
-          <Btn kind="primary" icon="save" disabled={!balanced} onClick={post}>Post voucher <span className="kbd text-ink">Ctrl+S</span></Btn>
+          <Btn needs="C" kind="primary" icon="save" disabled={!balanced} onClick={post}>Post voucher <span className="kbd text-ink">Ctrl+S</span></Btn>
         </PageHead>
         <div className="px-5 flex gap-1 flex-wrap mb-3" role="tablist" aria-label="Voucher type">
           {TYPES.map((t) => <button key={t} role="tab" aria-selected={type === t} onClick={() => pick(t)} className={`h-8 px-3 rounded border text-[13px] ${type === t ? 'bg-neel text-onneel border-neel' : 'bg-sheet border-rule hover:bg-wash'}`}>{t} <span className="text-[10px] opacity-70">{KEYS[t]}</span></button>)}

@@ -3,6 +3,7 @@ import { useApp, term, toasts, toast } from '../lib/app'
 import { tr } from '../lib/i18n'
 import { inr, inr0 } from '../lib/fmt'
 import { Icon } from './icons'
+import { useCan, ACT_LABEL, type Act } from '../lib/rights'
 
 export function useT() {
   const c = useApp((s) => s.draft)
@@ -53,10 +54,12 @@ export function PageHead({ title, sub, children, crumbs }: { title: string; sub?
   )
 }
 
-export function Btn({ icon, children, kind = '', ...p }: { icon?: string; kind?: 'primary' | 'danger' | 'ghost' | ''; children?: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function Btn({ icon, children, kind = '', needs, ...p }: { icon?: string; kind?: 'primary' | 'danger' | 'ghost' | ''; children?: ReactNode; needs?: Act } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const can = useCan()
+  const denied = !!needs && !can(needs)
   const cls = `btn ${kind ? 'btn-' + kind : ''} ${p.className ?? ''}`
   return (
-    <button type="button" {...p} className={cls}>
+    <button type="button" {...p} disabled={p.disabled || denied} title={denied ? `${can.role} cannot ${ACT_LABEL[needs!].toLowerCase()} here. The owner can change this in Rights matrix.` : p.title} className={cls}>
       {icon && <Icon n={icon} size={14} />}
       {children}
     </button>

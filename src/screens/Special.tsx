@@ -28,7 +28,7 @@ export function Approvals() {
                 <p className="text-[13px] muted mt-0.5">{a.detail}</p>
                 <div className="text-xs muted mt-1">Asked by {a.by} · {inr0(a.amount)} · due {a.due}{chain && <> · chain: {chain.steps.map((x) => x.role).join(' then ')}</>}</div>
               </div>
-              {a.status === 'pending' ? <div className="flex gap-2 shrink-0"><Btn onClick={() => decide(a.id, 'rejected')}>Reject</Btn><Btn kind="primary" onClick={() => decide(a.id, 'approved')}>Approve</Btn></div> : <Btn className="btn-sm" onClick={() => set({ approvals: s.approvals.map((x) => (x.id === a.id ? { ...x, status: 'pending' } : x)) })}>Reopen</Btn>}
+              {a.status === 'pending' ? <div className="flex gap-2 shrink-0"><Btn needs="A" onClick={() => decide(a.id, 'rejected')}>Reject</Btn><Btn needs="A" kind="primary" onClick={() => decide(a.id, 'approved')}>Approve</Btn></div> : <Btn className="btn-sm" onClick={() => set({ approvals: s.approvals.map((x) => (x.id === a.id ? { ...x, status: 'pending' } : x)) })}>Reopen</Btn>}
             </article>
           )
         })}

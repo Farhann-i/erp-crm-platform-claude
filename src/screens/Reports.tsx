@@ -70,7 +70,7 @@ export function ReportViewer({ initial = 'sales' }: { initial?: string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <PageHead title={title} crumbs={['Reports']} sub={`${dmy(from)} to ${dmy(to)}. Totals stay pinned. Click a row to open its source.`}>
-        <Btn icon="download" onClick={() => downloadCsv(`${rep}-${to}.csv`, cols.map((c) => c.label), rows.map((r) => cols.map((c) => r[c.key] ?? '')))}>Export CSV</Btn>
+        <Btn needs="X" icon="download" onClick={() => downloadCsv(`${rep}-${to}.csv`, cols.map((c) => c.label), rows.map((r) => cols.map((c) => r[c.key] ?? '')))}>Export CSV</Btn>
       </PageHead>
       <div className="px-5 pb-3 flex items-center gap-3 flex-wrap text-xs">
         <label className="flex items-center gap-1.5"><span className="muted">Report</span><select className="inp w-44" value={rep} onChange={(e) => { setRep(e.target.value); setGroup('none') }}>{REPORTS.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></label>

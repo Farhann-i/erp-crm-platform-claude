@@ -6,6 +6,7 @@ import { term } from '../lib/app'
 import { Icon } from '../ui/icons'
 import { Seg, Toasts, Btn, Status } from '../ui/kit'
 import { PrintDialog } from '../ui/BillPrint'
+import { useCanSee } from '../lib/rights'
 import { ctx, auth, USERS, lock, signOut } from './ctx'
 import { SignIn, LockScreen } from './Lock'
 import { Margin } from './Margin'
@@ -18,7 +19,8 @@ import { Phone } from '../screens/Mobile'
 export function useMenu() {
   const c = useApp((s) => s.draft)
   const mode = useApp((s) => s.mode)
-  return useMemo(() => c.menu.map((g) => ({ ...g, items: g.items.filter((i) => i.visible && i.modes.includes(mode) && c.modules.find((m) => m.id === i.module)?.on) })).filter((g) => g.items.length), [c, mode])
+  const see = useCanSee()
+  return useMemo(() => c.menu.map((g) => ({ ...g, items: g.items.filter((i) => i.visible && see(i.route) && i.modes.includes(mode) && c.modules.find((m) => m.id === i.module)?.on) })).filter((g) => g.items.length), [c, mode, see])
 }
 
 const SHORTS: Record<Mode, [string, string][]> = {

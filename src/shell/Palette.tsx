@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp, go, set, setMode, term } from '../lib/app'
+import { canNow } from '../lib/rights'
 import { tr } from '../lib/i18n'
 import { Icon } from '../ui/icons'
 import { ctx } from './ctx'
@@ -20,7 +21,7 @@ export function Palette() {
     const modeOf = (m: Mode) => s.mode === m
     c.menu.forEach((g) => g.items.forEach((it) => {
       if (!it.visible || !c.modules.find((m) => m.id === it.module)?.on) return
-      if (!it.modes.includes(s.mode)) return
+      if (!it.modes.includes(s.mode) || !canNow(it.route, 'V')) return
       out.push({ id: 'm' + it.id, label: term(c, tr(c.lang, it.label)), hint: term(c, g.label), icon: it.icon, run: () => go(it.route) })
     }))
     ;(['counter', 'books', 'owner', 'studio'] as Mode[]).forEach((m) => !modeOf(m) && out.push({ id: 'mode' + m, label: `Switch to ${m} mode`, hint: 'Action', icon: 'swap', run: () => setMode(m) }))
