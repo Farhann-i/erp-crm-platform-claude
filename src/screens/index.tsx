@@ -8,6 +8,7 @@ import { ReportViewer } from './Reports'
 import { Generic, SPECS } from './Generic'
 import { Approvals, Sync, Ask, Pipeline, Printing, Users, Ledgers, Gstr } from './Special'
 import { Phone } from './Mobile'
+import { Inbox, Campaigns } from './Messaging'
 
 const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables' }
 
@@ -38,6 +39,8 @@ export function Screen({ route }: { route: string }) {
     case 'ask': return <Ask />
     case 'printing': return <Printing />
     case 'users': return <Users />
+    case 'inbox': return <Inbox />
+    case 'campaigns': return <Campaigns />
   }
   if (SPECS[route]) return <Generic key={route} route={route} />
   return <Restricted what={`There is no screen at "${route}". Use the menu or press Ctrl+K.`} />

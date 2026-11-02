@@ -1,5 +1,5 @@
 export type Mode = 'counter' | 'books' | 'owner' | 'studio'
-export type PackId = 'textile' | 'pharmacy' | 'cafeteria' | 'school' | 'general'
+export type PackId = 'textile' | 'pharmacy' | 'cafeteria' | 'school' | 'general' | 'hardware' | 'grocery' | 'gym'
 export type Lang = 'en' | 'ml' | 'hi'
 
 export interface MenuItem {
@@ -11,10 +11,12 @@ export interface MenuItem {
   visible: boolean
   modes: Mode[]
   key?: string
+  ml?: string
+  hi?: string
 }
 export interface MenuGroup { id: string; label: string; items: MenuItem[] }
 export interface FieldDef { id: string; label: string; type: 'text' | 'number' | 'date' | 'select' | 'yesno'; required: boolean; visible: boolean; locked?: boolean; options?: string[]; custom?: boolean }
-export interface Stage { id: string; name: string; kind: 'start' | 'step' | 'approval' | 'end' }
+export interface Stage { id: string; name: string; kind: 'start' | 'step' | 'approval' | 'end'; sla?: number; owner?: string; back?: string; tone?: 'neutral' | 'haldi' | 'mehndi' | 'sindoor' }
 export interface Pipeline { id: string; name: string; stages: Stage[] }
 export interface Workflow { id: string; name: string; trigger: string; conditions: string[]; actions: string[]; on: boolean }
 export interface Approval { id: string; name: string; doc: string; rule: string; steps: { role: string; limit: number }[]; on: boolean }
@@ -33,6 +35,7 @@ export interface Config {
   branches: Branch[]
   modules: ModuleDef[]
   menu: MenuGroup[]
+  homes: Record<'counter' | 'books' | 'owner', string>
   numbering: Numbering[]
   pipelines: Pipeline[]
   workflows: Workflow[]
@@ -48,6 +51,9 @@ export const PRESETS: ThemePreset[] = [
   { id: 'chai', name: 'Chai', note: 'Cafeteria. Roasted brown.', day: { accent: '#8A3B12', cotton: '#F6F1EA', sheet: '#FDFBF7', ink: '#2E1D12', rule: '#E2D8CB' }, night: night('#F0A367', '#1A110B', '#241810', '#40302300'.slice(0, 7)) },
   { id: 'slate', name: 'Slate', note: 'School. Calm blue-grey.', day: { accent: '#2B5A8C', cotton: '#EEF2F6', sheet: '#FAFBFD', ink: '#172233', rule: '#D3DBE5' }, night: night('#8DBDF0', '#0C131D', '#121C2A', '#233248') },
   { id: 'madder', name: 'Madder', note: 'Textile. Natural red dye.', day: { accent: '#9B2C3F', cotton: '#F5F1EF', sheet: '#FCFAF9', ink: '#2B1A1E', rule: '#E0D6D3' }, night: night('#F28B9C', '#1A0E11', '#25151A', '#42262D') },
+  { id: 'rivet', name: 'Rivet', note: 'Hardware and sanitaryware. Steel teal.', day: { accent: '#1F4E5F', cotton: '#EEF2F3', sheet: '#FAFBFC', ink: '#14262D', rule: '#D2DCDF' }, night: night('#7CC4DA', '#0B1619', '#112027', '#223B44') },
+  { id: 'kirana', name: 'Kirana', note: 'Grocery. Leaf green on warm paper.', day: { accent: '#2D6A3E', cotton: '#F2F4EE', sheet: '#FBFCF8', ink: '#1C2A20', rule: '#DADFD2' }, night: night('#7FD29A', '#0C150F', '#122019', '#243A2B') },
+  { id: 'iron', name: 'Iron', note: 'Gym. Olive and chalk.', day: { accent: '#556B00', cotton: '#F3F3EC', sheet: '#FBFBF6', ink: '#23260F', rule: '#DDDDCF' }, night: night('#C5DD52', '#12140A', '#1B1E0F', '#32371D') },
   { id: 'graphite', name: 'Graphite', note: 'General retail. Neutral and quiet.', day: { accent: '#2F3A46', cotton: '#F1F2F3', sheet: '#FBFBFC', ink: '#1A2028', rule: '#D8DCE0' }, night: night('#B6C2D0', '#0F1216', '#171C22', '#2A323B') },
 ]
 
@@ -62,9 +68,12 @@ export const PACKS: Pack[] = [
   { id: 'pharmacy', name: 'Pharmacy', blurb: 'Batch and expiry first billing, schedule drugs, doctor and patient details.', preset: 'aushadhi', terms: { customer: 'Patient', customers: 'Patients', supplier: 'Distributor', suppliers: 'Distributors', godown: 'Store room', godowns: 'Store rooms', item: 'Medicine', items: 'Medicines' }, cashier: 'counter', modulesOff: [], version: '1.1.0', fields: { item: [F('schedule', 'Drug schedule', 'select', true, ['OTC', 'H', 'H1', 'X']), F('salt', 'Composition', 'text')], party: [F('doctor', 'Referring doctor', 'text')] } },
   { id: 'cafeteria', name: 'Cafeteria', blurb: 'Table and tile POS, kitchen tickets, recipe-based stock.', preset: 'chai', terms: { customer: 'Guest', customers: 'Guests', item: 'Menu item', items: 'Menu items', godown: 'Kitchen store', godowns: 'Kitchen stores', invoice: 'Tax invoice' }, cashier: 'tile', modulesOff: ['purchase'], version: '0.9.0', fields: { item: [F('veg', 'Veg or non-veg', 'select', true, ['Veg', 'Non-veg', 'Egg']), F('prep', 'Prep time (min)', 'number')] } },
   { id: 'school', name: 'School', blurb: 'Fee schedules, recurring invoices, student ledgers and reminders.', preset: 'slate', terms: { customer: 'Student', customers: 'Students', item: 'Fee head', items: 'Fee heads', invoice: 'Fee receipt', bill: 'Fee receipt', supplier: 'Vendor', suppliers: 'Vendors' }, cashier: 'counter', modulesOff: ['inventory'], version: '0.8.0', fields: { party: [F('class', 'Class and section', 'text', true), F('guardian', 'Guardian', 'text', true)] } },
-  { id: 'general', name: 'General retail', blurb: 'Variants, brands and price categories. Sanitaryware is folded in here until it is confirmed as its own pack.', preset: 'graphite', terms: {}, cashier: 'tile', modulesOff: [], version: '1.0.0', fields: { item: [F('brand', 'Brand', 'text'), F('warranty', 'Warranty (months)', 'number')] } },
+  { id: 'general', name: 'General retail', blurb: 'Variants, brands and price categories for mixed-goods shops, from home and kitchen to gifts.', preset: 'graphite', terms: {}, cashier: 'tile', modulesOff: [], version: '1.0.0', fields: { item: [F('brand', 'Brand', 'text'), F('warranty', 'Warranty (months)', 'number')] } },
+  { id: 'hardware', name: 'Hardware and sanitaryware', blurb: 'Sizes and specs, brand and warranty, contractor price lists, bulk units and delivery challans.', preset: 'rivet', terms: { item: 'Product', items: 'Products', godown: 'Warehouse', godowns: 'Warehouses', salesperson: 'Counter staff' }, cashier: 'counter', modulesOff: [], version: '0.7.0', fields: { item: [F('spec', 'Size or specification', 'text'), F('brand', 'Brand', 'text'), F('warranty', 'Warranty (months)', 'number')], party: [F('site', 'Site or project', 'text')] } },
+  { id: 'grocery', name: 'Groceries', blurb: 'Loose and packed goods, weighing scale, fast tile billing, expiry and daily price changes.', preset: 'kirana', terms: { item: 'Product', items: 'Products', godown: 'Back store', godowns: 'Back stores' }, cashier: 'tile', modulesOff: ['sales'], version: '0.6.0', fields: { item: [F('loose', 'Sold loose or packed', 'select', true, ['Loose', 'Packed']), F('shelf', 'Shelf life (days)', 'number')] } },
+  { id: 'gym', name: 'Gym and fitness', blurb: 'Membership plans, recurring bills, renewals, trainer assignment and freeze or transfer of plans.', preset: 'iron', terms: { customer: 'Member', customers: 'Members', item: 'Plan', items: 'Plans', invoice: 'Membership bill', bill: 'Membership bill', godown: 'Store', godowns: 'Stores', salesperson: 'Trainer' }, cashier: 'counter', modulesOff: ['purchase', 'inventory'], version: '0.5.0', fields: { item: [F('validity', 'Validity (days)', 'number', true)], party: [F('trainer', 'Assigned trainer', 'text'), F('joined', 'Joining date', 'date', true), F('ends', 'Plan ends on', 'date')] } },
 ] as Pack[]
-export const PENDING_INDUSTRIES = ['Clinic and hospital', 'Restaurant', 'Hotel', 'Salon and spa', 'Jewellery', 'Electronics', 'Supermarket', 'Hardware', 'Auto spares', 'Bakery', 'Stationery', 'Footwear', 'Furniture', 'Agri inputs', 'Wholesale distribution']
+export const PENDING_INDUSTRIES = ['Clinic and hospital', 'Restaurant', 'Hotel', 'Salon and spa', 'Jewellery', 'Electronics', 'Supermarket', 'Auto spares', 'Bakery', 'Stationery', 'Footwear', 'Furniture', 'Agri inputs', 'Wholesale distribution']
 
 const mi = (id: string, label: string, icon: string, module: string, modes: Mode[], route = id): MenuItem => ({ id, label, route, icon, module, visible: true, modes })
 const B: Mode[] = ['books'], O: Mode[] = ['owner'], BO: Mode[] = ['books', 'owner'], ALL: Mode[] = ['books', 'owner', 'counter']
@@ -76,7 +85,7 @@ export const DEFAULT_MENU: MenuGroup[] = [
   { id: 'stock', label: 'Stock', items: [mi('stock', 'Stock on hand', 'box', 'inventory', BO), mi('items', '{item} master', 'tag', 'masters', B), mi('transfers', 'Transfers', 'truck', 'inventory', B), mi('counts', 'Stock count', 'scan', 'inventory', B), mi('expiry', 'Expiry and ageing', 'clock', 'inventory', B)] },
   { id: 'books', label: 'Books', items: [mi('vouchers', 'Voucher entry', 'book', 'accounts', B), mi('daybook', 'Day book', 'list', 'accounts', B), mi('ledgers', 'Ledgers', 'ledger', 'accounts', B), mi('trial', 'Trial balance', 'scale', 'accounts', B), mi('pnl', 'Profit and loss', 'trend', 'accounts', BO), mi('outstanding', 'Bill-wise outstanding', 'clock', 'accounts', B)] },
   { id: 'comply', label: 'Bank and GST', items: [mi('bankrec', 'Bank reconciliation', 'bank', 'banking', B), mi('pdc', 'Post-dated cheques', 'cheque', 'banking', B), mi('gstr', 'GST returns', 'gst', 'gst', B), mi('einv', 'E-invoice and e-way bill', 'qr', 'gst', B), mi('gst2b', '2B reconciliation', 'scale', 'gst', B)] },
-  { id: 'people', label: 'People', items: [mi('parties', 'Party 360', 'users', 'crm', BO), mi('leads', 'Leads and enquiries', 'funnel', 'crm', BO), mi('collections', 'Collections', 'wallet', 'crm', BO), mi('campaigns', 'Campaigns', 'mega', 'crm', B), mi('loyalty', 'Loyalty and vouchers', 'gift', 'crm', B), mi('inbox', 'Unified inbox', 'chat', 'integrations', BO)] },
+  { id: 'people', label: 'People', items: [mi('parties', 'Party 360', 'users', 'crm', BO), mi('leads', 'Leads and enquiries', 'funnel', 'crm', BO), mi('collections', 'Collections', 'wallet', 'crm', BO), mi('campaigns', 'Campaigns', 'mega', 'crm', BO), mi('loyalty', 'Loyalty and vouchers', 'gift', 'crm', B), mi('inbox', 'Unified inbox', 'chat', 'integrations', BO)] },
   { id: 'reports', label: 'Reports', items: [mi('reports', 'Report viewer', 'chart', 'reports', BO), mi('builder', 'Report builder', 'wrench', 'reports', B), mi('scheduled', 'Scheduled reports', 'clock', 'reports', B)] },
   { id: 'auto', label: 'Automation', items: [mi('runs', 'Workflow runs', 'flow', 'workflows', B), mi('ask', 'Ask assistant', 'spark', 'ai', ALL), mi('integr', 'Integrations', 'plug', 'integrations', B), mi('hardware', 'Devices', 'printer', 'integrations', ['books', 'counter'])] },
   { id: 'tools', label: 'Tools', items: [mi('migration', 'Data migration', 'upload', 'migration', B), mi('sync', 'Sync and conflicts', 'sync', 'sync', B), mi('backup', 'Backup and restore', 'shield', 'sync', B), mi('users', 'Users and roles', 'key', 'iam', B), mi('audit', 'Audit log', 'eye', 'iam', B), mi('privacy', 'Privacy and operations', 'lock', 'privacy', B), mi('printing', 'Print templates', 'printer', 'printing', B), mi('licence', 'Licence and plan', 'badge', 'platform', B), mi('coverage', 'SRS coverage', 'list', 'platform', B)] },
@@ -122,6 +131,7 @@ export function defaultConfig(): Config {
     ],
     modules: JSON.parse(JSON.stringify(DEFAULT_MODULES)),
     menu: JSON.parse(JSON.stringify(DEFAULT_MENU)),
+    homes: { counter: 'billing', books: 'vouchers', owner: 'owner' },
     numbering: [
       { id: 'n1', doc: 'Sales invoice', prefix: 'INV/26-27/', padding: 5, start: 1043, reset: 'yearly', branchWise: true },
       { id: 'n2', doc: 'Purchase order', prefix: 'PO/', padding: 4, start: 219, reset: 'yearly', branchWise: false },
@@ -130,7 +140,7 @@ export function defaultConfig(): Config {
       { id: 'n5', doc: 'Credit note', prefix: 'CN/', padding: 4, start: 27, reset: 'yearly', branchWise: true },
     ],
     pipelines: [
-      { id: 'p1', name: 'Sales documents', stages: [{ id: 's1', name: 'Enquiry', kind: 'start' }, { id: 's2', name: 'Quotation', kind: 'step' }, { id: 's3', name: 'Order', kind: 'step' }, { id: 's4', name: 'Challan', kind: 'step' }, { id: 's5', name: 'Invoice', kind: 'end' }] },
+      { id: 'p1', name: 'Sales documents', stages: [{ id: 's1', name: 'Enquiry', kind: 'start', sla: 2, owner: 'Salesperson' }, { id: 's2', name: 'Quotation', kind: 'step', sla: 3, owner: 'Salesperson', back: 's1' }, { id: 's3', name: 'Order', kind: 'approval', sla: 2, owner: 'Store manager', back: 's2', tone: 'haldi' }, { id: 's4', name: 'Challan', kind: 'step', sla: 1, owner: 'Godown keeper' }, { id: 's5', name: 'Invoice', kind: 'end', owner: 'Accountant', tone: 'mehndi' }] },
       { id: 'p2', name: 'Purchase documents', stages: [{ id: 'q1', name: 'Purchase order', kind: 'start' }, { id: 'q2', name: 'Goods receipt', kind: 'step' }, { id: 'q3', name: 'Purchase invoice', kind: 'end' }] },
       { id: 'p3', name: 'Lead pipeline', stages: [{ id: 'l1', name: 'New', kind: 'start' }, { id: 'l2', name: 'Contacted', kind: 'step' }, { id: 'l3', name: 'Quoted', kind: 'step' }, { id: 'l4', name: 'Won', kind: 'end' }] },
     ],

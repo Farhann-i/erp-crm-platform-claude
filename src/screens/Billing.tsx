@@ -5,6 +5,7 @@ import { inr, inr0, today } from '../lib/fmt'
 import { Btn, Tape, Modal, Money, Field, useT, Bal, Status, type TapeLine } from '../ui/kit'
 import { Icon } from '../ui/icons'
 import { ctx, select } from '../shell/ctx'
+import { openPrint } from '../ui/BillPrint'
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 const COLOURS = ['Indigo', 'White', 'Mustard']
@@ -90,13 +91,56 @@ function ItemSearch({ onPick, big, inputRef }: { onPick: (it: Item) => void; big
 function PartyPick({ compact }: { compact?: boolean }) {
   const b = useBill()
   const t = useT()
+  const [adding, setAdding] = useState(false)
+  const p = b.party
   return (
-    <label className="flex items-center gap-2 text-xs">
-      <span className="muted">{t('{customer}')}</span>
-      <select aria-label={t('{customer}')} className={`inp ${compact ? 'w-44' : 'w-56'}`} value={b.bill.partyId} onChange={(e) => b.setParty(e.target.value)}>
-        {b.parties.filter((p) => p.kind === 'customer').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
-    </label>
+    <div className="flex items-center gap-2 text-xs flex-wrap">
+      <label className="flex items-center gap-2">
+        <span className="muted">{t('{customer}')}</span>
+        <select aria-label={t('{customer}')} className={`inp ${compact ? 'w-40' : 'w-52'}`} value={b.bill.partyId} onChange={(e) => b.setParty(e.target.value)}>
+          {b.parties.filter((x) => x.kind === 'customer').map((x) => <option key={x.id} value={x.id}>{x.name}{x.phone ? ` · ${x.phone}` : ''}</option>)}
+        </select>
+      </label>
+      <Btn className="btn-sm" icon="plus" onClick={() => setAdding(true)}>New</Btn>
+      {!compact && p.id !== 'c0' && <span className="muted">{p.phone}{p.gstin ? ` · ${p.gstin}` : ''} · owes {inr0(p.balance)}{p.limit ? ` of ${inr0(p.limit)}` : ''}</span>}
+      {adding && <QuickCustomer onClose={() => setAdding(false)} onSaved={(id) => { b.setParty(id); setAdding(false) }} />}
+    </div>
+  )
+}
+
+const STATES: Record<string, string> = { '32': 'Kerala', '33': 'Tamil Nadu', '29': 'Karnataka', '27': 'Maharashtra', '07': 'Delhi', '24': 'Gujarat' }
+export function QuickCustomer({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
+  const parties = useApp((s) => s.parties)
+  const [v, setV] = useState({ name: '', phone: '', gstin: '', city: '', limit: '0', consent: true })
+  const [e, setE] = useState<Record<string, string>>({})
+  const save = () => {
+    const er: Record<string, string> = {}
+    const ph = v.phone.replace(/\D/g, '')
+    if (!v.name.trim()) er.name = 'Enter the customer name.'
+    if (ph.length !== 10) er.phone = 'Enter a 10-digit mobile number.'
+    else if (parties.some((x) => x.phone.replace(/\D/g, '') === ph)) er.phone = `This number already belongs to ${parties.find((x) => x.phone.replace(/\D/g, '') === ph)!.name}.`
+    if (v.gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(v.gstin.toUpperCase())) er.gstin = 'GSTIN has 15 characters, for example 32AAFPN8821M1ZK.'
+    setE(er)
+    if (Object.keys(er).length) return
+    const id = 'c' + Date.now()
+    const party = { id, name: v.name.trim(), kind: 'customer' as const, city: v.city.trim() || 'Kochi', phone: `${ph.slice(0, 5)} ${ph.slice(5)}`, gstin: v.gstin.toUpperCase(), balance: 0, limit: +v.limit || 0, risk: 'low' as const, lastPay: '', overdueDays: 0, consent: v.consent }
+    set((s) => ({ parties: [...s.parties, party] }))
+    toast(`${party.name} added.`)
+    onSaved(id)
+  }
+  return (
+    <Modal open onClose={onClose} title="New customer" foot={<><Btn onClick={onClose}>Cancel</Btn><Btn kind="primary" onClick={save}>Save and use on this bill</Btn></>}>
+      <div className="space-y-3" onKeyDown={(k) => k.key === 'Enter' && save()}>
+        <Field label="Name" req error={e.name}><input autoFocus className="inp" value={v.name} onChange={(x) => setV({ ...v, name: x.target.value })} placeholder="Anitha Menon" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Mobile" req error={e.phone}><input inputMode="tel" className="inp num" value={v.phone} onChange={(x) => setV({ ...v, phone: x.target.value })} placeholder="98470 12345" /></Field>
+          <Field label="City"><input className="inp" value={v.city} onChange={(x) => setV({ ...v, city: x.target.value })} placeholder="Kochi" /></Field>
+        </div>
+        <Field label="GSTIN (for business invoices)" error={e.gstin} hint={v.gstin.length >= 2 ? `State: ${STATES[v.gstin.slice(0, 2)] ?? 'check the first two digits'}. Other states get IGST.` : 'Leave blank for a consumer bill.'}><input className="inp num uppercase" maxLength={15} value={v.gstin} onChange={(x) => setV({ ...v, gstin: x.target.value })} placeholder="32AAFPN8821M1ZK" /></Field>
+        <Field label="Credit limit (₹)"><input type="number" min={0} className="inp num" value={v.limit} onChange={(x) => setV({ ...v, limit: x.target.value })} /></Field>
+        <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={v.consent} onChange={(x) => setV({ ...v, consent: x.target.checked })} />Customer agreed to receive bills and offers on WhatsApp</label>
+      </div>
+    </Modal>
   )
 }
 
@@ -172,6 +216,7 @@ export function Tender({ onClose }: { onClose: () => void }) {
     }))
     bumpNo('Sales invoice')
     b.clear(); onClose()
+    openPrint(inv)
     toast(`${no} saved. ${inr0(total)} received${p.credit ? `, ${inr0(p.credit)} on credit` : ''}.${get().offline ? ' Waiting to sync.' : ''}`)
   }
   const row = (k: keyof typeof p, label: string, icon: string, dis = false) => (
@@ -285,6 +330,7 @@ function LedgerSheet({ onPick, tender, hold, scan, inputRef, showHeld }: VP) {
   const held = useApp((s) => s.held.length)
   const no = useApp((s) => s.published.numbering.find((n) => n.doc === 'Sales invoice'))
   const cost = mode !== 'counter'
+  const [recent, setRecent] = useState(false)
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="px-5 pt-3 pb-2 flex items-center gap-4 flex-wrap border-b border-rule bg-sheet">
@@ -294,7 +340,9 @@ function LedgerSheet({ onPick, tender, hold, scan, inputRef, showHeld }: VP) {
         <label className="text-xs flex items-center gap-2"><span className="muted">Price category</span><select className="inp w-28"><option>Retail</option><option>Wholesale</option><option>Staff</option></select></label>
         <label className="text-xs flex items-center gap-2"><span className="muted">{t('{salesperson}')}</span><select className="inp w-32"><option>Salim</option><option>Divya</option></select></label>
         <span className="flex-1" />{scan}
+        <Btn icon="printer" onClick={() => setRecent(true)}>Recent bills</Btn>
         <Btn icon="pause" onClick={showHeld}>Held ({held})</Btn>
+        {recent && <RecentBills onClose={() => setRecent(false)} />}
       </div>
       <div className="px-5 py-2 bg-sheet border-b border-rule"><ItemSearch onPick={onPick} inputRef={inputRef} /></div>
       <div className="flex-1 min-h-0 scroll bg-sheet">
@@ -444,3 +492,18 @@ export function CustomerDisplay({ onClose }: { onClose: () => void }) {
   )
 }
 export { Bal, Status, Field }
+
+function RecentBills({ onClose }: { onClose: () => void }) {
+  const inv = useApp((s) => s.invoices)
+  const [q, setQ] = useState('')
+  const rows = inv.filter((i) => (i.no + i.partyName).toLowerCase().includes(q.toLowerCase())).slice(0, 8)
+  return (
+    <Modal open onClose={onClose} title="Recent bills" foot={<Btn onClick={onClose}>Close</Btn>}>
+      <input aria-label="Search bills" autoFocus className="inp mb-2" placeholder="Search by bill number or customer" value={q} onChange={(e) => setQ(e.target.value)} />
+      <ul className="divide-y divide-rule">
+        {rows.map((i) => <li key={i.id} className="flex items-center justify-between py-2 text-[13px]"><div><div className="num font-medium">{i.no}</div><div className="text-xs muted">{i.partyName} · {i.date.split('-').reverse().join('-')}</div></div><div className="flex items-center gap-3"><Money v={i.total} /><Btn className="btn-sm" icon="printer" onClick={() => { onClose(); openPrint(i, true) }}>Reprint</Btn></div></li>)}
+        {!rows.length && <li className="py-4 text-center muted text-sm">No bill matches "{q}".</li>}
+      </ul>
+    </Modal>
+  )
+}

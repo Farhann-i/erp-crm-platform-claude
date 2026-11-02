@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useApp, set, go, closeTab, setMode, syncFromHash, themeVars, pendingChanges, toast, MODE_HOME } from '../lib/app'
+import { useApp, labelOf, set, go, closeTab, setMode, syncFromHash, themeVars, pendingChanges, toast, MODE_HOME } from '../lib/app'
 import { PRESETS, type Mode, type MenuItem } from '../lib/config'
 import { tr } from '../lib/i18n'
 import { term } from '../lib/app'
 import { Icon } from '../ui/icons'
 import { Seg, Toasts, Btn, Status } from '../ui/kit'
-import { ctx } from './ctx'
+import { PrintDialog } from '../ui/BillPrint'
+import { ctx, auth, USERS, lock, signOut } from './ctx'
+import { SignIn, LockScreen } from './Lock'
 import { Margin } from './Margin'
 import { Palette } from './Palette'
 import { Pulse, Notifications } from './Pulse'
@@ -33,6 +35,9 @@ export default function Shell() {
   const branch = c.branches.find((b) => b.id === s.branchId) ?? c.branches[0]
   const menu = useMenu()
   const narrow = useNarrow()
+  const uid = auth.use((x) => x.user)
+  const locked = auth.use((x) => x.locked)
+  const user = USERS.find((u) => u.id === uid)
   const pending = pendingChanges()
 
   useEffect(() => {
@@ -43,6 +48,7 @@ export default function Shell() {
     st.setProperty('--neel', v.accent); st.setProperty('--on-neel', v.on); st.setProperty('--cotton', v.cotton); st.setProperty('--sheet', v.sheet); st.setProperty('--ink', v.ink); st.setProperty('--rule', v.rule); st.setProperty('--radius', c.theme.radius + 'px')
     document.title = `${branch.display}, ${term(c, tr(c.lang, 'Home'))}`
   }, [s.night, c, v.accent, s.mode, branch])
+  useEffect(() => { if (user && !user.modes.includes(s.mode)) setMode(user.start) }, [user?.id])
   useEffect(() => {
     const q = new URLSearchParams(location.search)
     if (q.get('mode')) set({ mode: q.get('mode') as Mode })
@@ -56,16 +62,18 @@ export default function Shell() {
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); ctx.set((x) => ({ palette: !x.palette })) }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l' && auth.get().user) { e.preventDefault(); lock() }
       if (e.key === 'Escape') ctx.set({ palette: false, pulse: false, notif: false })
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [])
 
-  if (narrow) return <><Phone full /><Toasts /></>
+  if (!user) return <SignIn />
+  if (narrow) return <><Phone full /><Toasts /><PrintDialog /></>
   const studio = s.mode === 'studio'
   const counter = s.mode === 'counter'
-  const label = (i: MenuItem) => term(c, tr(c.lang, i.label))
+  const label = (i: MenuItem) => labelOf(c, i)
   const known = menu.flatMap((g) => g.items).find((i) => i.route === s.route)
   return (
     <div className="h-full flex flex-col">
@@ -94,7 +102,9 @@ export default function Shell() {
         <Pulse />
         <Notifications />
         <button className="p-1.5 rounded hover:bg-white/10" aria-label={s.night ? 'Switch to Day theme' : 'Switch to Night theme'} onClick={() => set({ night: !s.night })}><Icon n={s.night ? 'sun' : 'moon'} /></button>
-        <ModeSwitch />
+        <button className="p-1.5 rounded hover:bg-white/10" aria-label={`Lock screen, signed in as ${user.name}`} title="Lock (Ctrl+L)" onClick={lock}><Icon n="lock" /></button>
+        <ModeSwitch allowed={user.modes} />
+        <button className="text-xs underline opacity-90 whitespace-nowrap" onClick={signOut}>Sign out</button>
       </header>
 
       {pending.length > 0 && (
@@ -152,6 +162,8 @@ export default function Shell() {
       <KeyBar mode={s.mode} />
       <Palette />
       <Toasts />
+      <PrintDialog />
+      {locked && <LockScreen />}
     </div>
   )
 }
@@ -166,12 +178,12 @@ function useNarrow() {
   return n
 }
 
-function ModeSwitch() {
+function ModeSwitch({ allowed }: { allowed: Mode[] }) {
   const mode = useApp((s) => s.mode)
   const opts: [Mode, string][] = [['counter', 'Counter'], ['books', 'Books'], ['owner', 'Owner'], ['studio', 'Studio']]
   return (
     <div role="radiogroup" aria-label="Work mode" className="inline-flex rounded p-0.5" style={{ background: 'color-mix(in srgb, var(--on-neel) 14%, transparent)' }}>
-      {opts.map(([id, l]) => (
+      {opts.filter(([id]) => allowed.includes(id)).map(([id, l]) => (
         <button key={id} role="radio" aria-checked={mode === id} onClick={() => setMode(id)} className="h-6 px-2.5 text-xs font-medium rounded-[3px]" style={mode === id ? { background: 'var(--on-neel)', color: 'var(--neel)' } : { color: 'var(--on-neel)' }}>{l}</button>
       ))}
     </div>
@@ -186,7 +198,7 @@ function CounterBar({ menu }: { menu: MenuItem[] }) {
     <div className="h-10 shrink-0 bg-sheet border-b border-rule flex items-center gap-1 px-3">
       {menu.map((i) => (
         <button key={i.id} onClick={() => go(i.route)} className={`h-8 px-3 rounded flex items-center gap-2 text-[13px] ${route === i.route ? 'bg-neel text-onneel' : 'hover:bg-wash'}`}>
-          <Icon n={i.icon} size={15} />{term(c, tr(c.lang, i.label))}{i.route === 'held' && held > 0 && <span className="chip">{held}</span>}
+          <Icon n={i.icon} size={15} />{labelOf(c, i)}{i.route === 'held' && held > 0 && <span className="chip">{held}</span>}
         </button>
       ))}
       <span className="flex-1" />

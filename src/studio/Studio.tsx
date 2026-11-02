@@ -7,6 +7,7 @@ import { Icon } from '../ui/icons'
 import { PrintPreview } from '../ui/PrintPreview'
 import { MenuBuilder, Modules, Designer, Chains, Numbering, Forms } from './StudioBuild'
 import { ChangeTape, PublishModal } from './StudioPublish'
+import { PreviewDock } from './Preview'
 
 const NAV: [string, string, string][] = [
   ['overview', 'Overview', 'dash'], ['packs', 'Industry packs', 'store'], ['theme', 'Theme', 'palette'], ['identity', 'Shop identity', 'building'], ['layouts', 'Layouts', 'layers'], ['terms', 'Terms and language', 'lang'],
@@ -19,6 +20,7 @@ export function Studio() {
   const pend = pendingChanges()
   const tab = route.split('/')[1] || 'overview'
   const [pub, setPub] = useState(false)
+  const [dock, setDock] = useState(() => window.innerWidth >= 1280)
   const fails = runChecks(draft).filter((c) => !c.ok).length
   const body = { overview: <Overview />, packs: <Packs />, theme: <Theme />, identity: <Identity />, layouts: <Layouts />, terms: <Terms />, menu: <MenuBuilder />, modules: <Modules />, workflows: <Designer />, approvals: <Chains />, numbering: <Numbering />, forms: <Forms />, changes: <ChangeTape /> }[tab] ?? <Overview />
   return (
@@ -34,10 +36,11 @@ export function Studio() {
           <span>{pend.length ? `${pend.length} unpublished ${pend.length === 1 ? 'change' : 'changes'}` : 'Draft matches published v' + version}</span>
           {fails > 0 && pend.length > 0 && <span className="chip border-sindoor text-sindoor">{fails} check{fails > 1 ? 's' : ''} failing</span>}
           <span className="flex-1" />
+          <Btn icon="panel" onClick={() => setDock(!dock)} aria-pressed={dock}>{dock ? 'Hide preview' : 'Live preview'}</Btn>
           <Btn disabled={!pend.length} onClick={discardDraft}>Discard draft</Btn>
           <Btn kind="primary" icon="upload" disabled={!pend.length} onClick={() => setPub(true)}>Review and publish</Btn>
         </div>
-        <div className="flex-1 min-h-0 scroll">{body}</div>
+        <div className="flex-1 min-h-0 flex"><div className="flex-1 min-w-0 scroll">{body}</div>{dock && <PreviewDock />}</div>
       </div>
       <PublishModal open={pub} onClose={() => setPub(false)} />
     </div>
@@ -103,7 +106,7 @@ function Packs() {
           )
         })}
       </div>
-      <Sec title="Pending industries" sub="Fifteen more are on the list. They are not drafted yet. Sanitaryware is folded into General retail until it is confirmed as its own pack.">
+      <Sec title="Pending industries" sub="Fourteen more are on the list. They are not drafted yet.">
         <div className="flex flex-wrap gap-1.5">{PENDING_INDUSTRIES.map((x) => <span key={x} className="chip h-7 px-3 bg-sheet">{x}</span>)}</div>
       </Sec>
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title="Install this pack as a draft?" foot={<><Btn onClick={() => setConfirm(null)}>Cancel</Btn><Btn kind="primary" onClick={() => { applyPack(confirm as never); setConfirm(null) }}>Install as draft</Btn></>}>

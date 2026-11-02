@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { useApp, edit, toast, term } from '../lib/app'
+import { useApp, edit, toast, term, pipelineIssues } from '../lib/app'
 import type { Mode, FieldDef } from '../lib/config'
 import { Btn, Field, PageHead, Toggle, Seg, Status } from '../ui/kit'
 import { Icon } from '../ui/icons'
@@ -19,10 +19,12 @@ export function MenuBuilder() {
   const c = useApp((s) => s.draft)
   const [pm, setPm] = useState<Mode>('books')
   const [drag, setDrag] = useState<[number, number] | null>(null)
+  const [showTr, setShowTr] = useState(false)
   const preview = c.menu.map((g) => ({ ...g, items: g.items.filter((i) => i.visible && i.modes.includes(pm) && c.modules.find((m) => m.id === i.module)?.on) })).filter((g) => g.items.length)
   return (
     <>
       <PageHead title="Menu builder" sub="Rename, reorder, hide, regroup and assign menu items by role. Items from switched-off modules disappear on their own. Drag a row or use the arrows. Tokens like {customer} follow your Terms." crumbs={['Admin Studio', 'Menu']}>
+        <label className="flex items-center gap-2 text-[13px] mr-2">Translations<Toggle on={showTr} label="Show Malayalam and Hindi labels" onChange={setShowTr} /></label>
         <Btn icon="plus" onClick={() => edit((x) => x.menu.push({ id: 'g' + Date.now(), label: 'New group', items: [] }))}>Add group</Btn>
       </PageHead>
       <div className="grid xl:grid-cols-[1fr_260px] gap-5 mx-5 pb-6">
@@ -42,7 +44,7 @@ export function MenuBuilder() {
                     <span className="cursor-grab muted" aria-hidden><Icon n="grip" size={14} /></span>
                     <select aria-label="Icon" className="inp w-24 h-7 px-1" value={it.icon} onChange={(e) => edit((x) => (x.menu[gi].items[ii].icon = e.target.value))}>{ICONS.concat(ICONS.includes(it.icon) ? [] : [it.icon]).map((i) => <option key={i}>{i}</option>)}</select>
                     <input aria-label="Label" className="inp h-7 w-52" value={it.label} onChange={(e) => edit((x) => (x.menu[gi].items[ii].label = e.target.value))} />
-                    <span className="text-xs muted w-28 truncate hidden 2xl:block">{term(c, it.label)}</span>
+                    {showTr ? <><input aria-label="Malayalam label" lang="ml" placeholder="മലയാളം" className="inp h-7 w-36" value={it.ml ?? ''} onChange={(e) => edit((x) => (x.menu[gi].items[ii].ml = e.target.value || undefined))} /><input aria-label="Hindi label" lang="hi" placeholder="हिन्दी" className="inp h-7 w-32" value={it.hi ?? ''} onChange={(e) => edit((x) => (x.menu[gi].items[ii].hi = e.target.value || undefined))} /></> : <span className="text-xs muted w-28 truncate hidden 2xl:block">{term(c, it.label)}</span>}
                     <span className="flex gap-1" role="group" aria-label="Visible to">{MODES.map((m) => <button key={m} aria-pressed={it.modes.includes(m)} onClick={() => edit((x) => { const a = x.menu[gi].items[ii].modes; x.menu[gi].items[ii].modes = a.includes(m) ? a.filter((y) => y !== m) : [...a, m] })} className={`chip h-6 ${it.modes.includes(m) ? 'bg-neel text-onneel border-neel' : 'bg-sheet muted'}`}>{m}</button>)}</span>
                     <span className="flex-1" />
                     <select aria-label="Move to group" className="inp w-28 h-7" value={g.id} onChange={(e) => edit((x) => { const [it2] = x.menu[gi].items.splice(ii, 1); x.menu.find((q) => q.id === e.target.value)!.items.push(it2) })}>{c.menu.map((q) => <option key={q.id} value={q.id}>{q.label}</option>)}</select>
@@ -60,6 +62,15 @@ export function MenuBuilder() {
         <aside className="xl:sticky xl:top-3 h-fit"><div className="flex items-center justify-between mb-1.5"><span className="text-xs font-medium">Live menu</span></div><Seg<Mode> label="Preview role" value={pm} onChange={setPm} opts={MODES.map((m) => ({ id: m, label: m }))} />
           <div className="panel mt-2 py-2 text-[13px] max-h-[600px] scroll">{preview.map((g) => <div key={g.id} className="mb-1.5"><div className="px-3 text-[11px] font-medium muted">{term(c, g.label)}</div>{g.items.map((i) => <div key={i.id} className="px-3 h-7 flex items-center gap-2"><Icon n={i.icon} size={14} />{term(c, i.label)}</div>)}</div>)}{preview.length === 0 && <p className="px-3 muted">No items for this role.</p>}</div></aside>
       </div>
+      <Sec title="Role home screens" sub="Where each work mode opens after sign-in and when you switch modes. The screen must be visible to that mode.">
+        <div className="panel divide-y divide-rule max-w-3xl">
+          {(['counter', 'books', 'owner'] as const).map((m) => {
+            const opts = c.menu.flatMap((g) => g.items).filter((i) => i.visible && i.modes.includes(m) && c.modules.find((x) => x.id === i.module)?.on)
+            const ok = opts.some((i) => i.route === c.homes[m])
+            return <div key={m} className="px-3 h-11 flex items-center gap-3 text-[13px]"><span className="w-24 font-medium capitalize">{m}</span><select aria-label={`${m} home screen`} aria-invalid={!ok} className="inp w-64" value={c.homes[m]} onChange={(e) => edit((x) => (x.homes[m] = e.target.value))}>{!ok && <option value={c.homes[m]}>{c.homes[m]} (not available)</option>}{opts.map((i) => <option key={i.id} value={i.route}>{term(c, i.label)}</option>)}</select>{!ok && <span className="text-sindoor text-xs">Hidden from this mode. Publishing is blocked.</span>}</div>
+          })}
+        </div>
+      </Sec>
     </>
   )
 }
@@ -105,27 +116,37 @@ export function Designer() {
   const [pi, setPi] = useState(0)
   const [dry, setDry] = useState<string[] | null>(null)
   const w = c.workflows[wi]
-  const p = c.pipelines[pi]
+  const p = c.pipelines[Math.min(pi, c.pipelines.length - 1)]
+  const issues = pipelineIssues(c).filter((m) => m.startsWith(p.name + ':')).map((m) => m.slice(p.name.length + 2))
   return (
     <>
       <PageHead title="Workflows and pipelines" sub="Sentence-style builder with a dry run. Pipelines define the stages of a document or lead flow, and the app reads them." crumbs={['Admin Studio', 'Workflows']} />
-      <Sec title="Pipeline designer" act={<Btn className="btn-sm" icon="plus" onClick={() => edit((x) => x.pipelines.push({ id: 'p' + Date.now(), name: 'New pipeline', stages: [{ id: 's' + Date.now(), name: 'Start', kind: 'start' }, { id: 'e' + Date.now(), name: 'Done', kind: 'end' }] }))}>New pipeline</Btn>}>
-        <div className="panel p-4">
-          <div className="flex gap-3 items-center mb-3"><Seg label="Pipeline" value={String(pi)} onChange={(v) => setPi(+v)} opts={c.pipelines.map((x, i) => ({ id: String(i), label: x.name }))} /><input aria-label="Pipeline name" className="inp w-56" value={p.name} onChange={(e) => edit((x) => (x.pipelines[pi].name = e.target.value))} /></div>
-          <ol className="flex gap-2 items-stretch overflow-x-auto pb-2">
-            {p.stages.map((s, si) => (
-              <li key={s.id} className="flex items-center gap-2 shrink-0">
-                <div className="panel w-44 p-2 space-y-1.5 bg-wash">
-                  <input aria-label="Stage name" className="inp h-7 font-medium" value={s.name} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].name = e.target.value))} />
-                  <select aria-label="Stage kind" className="inp h-7" value={s.kind} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].kind = e.target.value as never))}><option value="start">Start</option><option value="step">Step</option><option value="approval">Needs approval</option><option value="end">End</option></select>
-                  <div className="flex justify-between"><button aria-label="Move left" className="btn btn-ghost btn-sm" disabled={si === 0} onClick={() => edit((x) => move(x.pipelines[pi].stages, si, -1))}><Icon n="arrowup" size={12} className="-rotate-90" /></button><button aria-label="Move right" className="btn btn-ghost btn-sm" disabled={si === p.stages.length - 1} onClick={() => edit((x) => move(x.pipelines[pi].stages, si, 1))}><Icon n="arrowdown" size={12} className="-rotate-90" /></button><button aria-label="Remove stage" className="btn btn-ghost btn-sm" disabled={p.stages.length <= 2} onClick={() => edit((x) => x.pipelines[pi].stages.splice(si, 1))}><Icon n="trash" size={12} /></button></div>
-                </div>
-                {si < p.stages.length - 1 && <Icon n="right" className="muted" />}
-              </li>
-            ))}
-            <li className="shrink-0 flex items-center"><Btn icon="plus" onClick={() => edit((x) => x.pipelines[pi].stages.splice(x.pipelines[pi].stages.length - 1, 0, { id: 's' + Date.now(), name: 'New stage', kind: 'step' }))}>Stage</Btn></li>
+      <Sec title="Pipeline designer" sub="Design the stages a document or lead moves through. Each stage has an owner, a time limit and an optional send-back step. The app reads this at once." act={<Btn className="btn-sm" icon="plus" onClick={() => { edit((x) => x.pipelines.push({ id: 'p' + Date.now(), name: 'New pipeline', stages: [{ id: 's' + Date.now(), name: 'Start', kind: 'start' }, { id: 'e' + Date.now(), name: 'Done', kind: 'end', tone: 'mehndi' }] })); setPi(c.pipelines.length) }}>New pipeline</Btn>}>
+        <div className="panel overflow-hidden">
+          <div className="flex gap-3 items-center px-4 h-12 border-b border-rule bg-wash"><Seg label="Pipeline" value={String(pi)} onChange={(v) => setPi(+v)} opts={c.pipelines.map((x, i) => ({ id: String(i), label: x.name }))} /><input aria-label="Pipeline name" className="inp w-56" value={p.name} onChange={(e) => edit((x) => (x.pipelines[pi].name = e.target.value))} /><span className="flex-1" /><span className="text-xs muted">{p.stages.reduce((a, s) => a + (s.sla ?? 0), 0)} days end to end</span><button className="btn btn-sm btn-danger" disabled={c.pipelines.length <= 1} onClick={() => { edit((x) => x.pipelines.splice(pi, 1)); setPi(0) }}>Delete pipeline</button></div>
+          <ol className="flex items-stretch gap-0 overflow-x-auto p-4" aria-label="Stages in order">
+            {p.stages.map((s, si) => {
+              const tone = { neutral: 'var(--rule)', haldi: 'var(--haldi)', mehndi: 'var(--mehndi)', sindoor: 'var(--sindoor)' }[s.tone ?? 'neutral']
+              return (
+                <li key={s.id} className="flex items-center shrink-0">
+                  <div className="w-52 rounded-lg border border-rule bg-sheet" style={{ borderTop: `4px solid ${tone}` }}>
+                    <div className="px-2.5 pt-2 flex items-center gap-1.5"><span className="num text-xs muted w-4">{si + 1}</span><input aria-label={`Stage ${si + 1} name`} className="inp h-7 font-medium" value={s.name} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].name = e.target.value))} /></div>
+                    <div className="p-2.5 grid grid-cols-2 gap-1.5 text-xs">
+                      <label className="col-span-2">Kind<select className="inp h-7 mt-0.5" value={s.kind} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].kind = e.target.value as never))}><option value="start">Start</option><option value="step">Step</option><option value="approval">Needs approval</option><option value="end">End</option></select></label>
+                      <label className="col-span-2">Owner<select className="inp h-7 mt-0.5" value={s.owner ?? ''} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].owner = e.target.value))}><option value="">Anyone</option>{[...ROLES, 'Salesperson', 'Godown keeper'].map((r) => <option key={r}>{r}</option>)}</select></label>
+                      <label>Time limit<span className="flex items-center gap-1 mt-0.5"><input type="number" min={0} className="inp num h-7" value={s.sla ?? 0} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].sla = Math.max(0, +e.target.value)))} />d</span></label>
+                      <label>Colour<select className="inp h-7 mt-0.5" value={s.tone ?? 'neutral'} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].tone = e.target.value as never))}><option value="neutral">Plain</option><option value="haldi">Amber</option><option value="mehndi">Green</option><option value="sindoor">Red</option></select></label>
+                      {si > 0 && <label className="col-span-2">Send back to<select className="inp h-7 mt-0.5" value={s.back ?? ''} onChange={(e) => edit((x) => (x.pipelines[pi].stages[si].back = e.target.value || undefined))}><option value="">No send-back</option>{p.stages.slice(0, si).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}
+                    </div>
+                    <div className="flex justify-between px-1.5 pb-1.5 border-t border-rule pt-1"><button aria-label={`Move ${s.name} earlier`} className="btn btn-ghost btn-sm" disabled={si === 0} onClick={() => edit((x) => move(x.pipelines[pi].stages, si, -1))}><Icon n="arrowup" size={12} className="-rotate-90" /></button><button aria-label={`Move ${s.name} later`} className="btn btn-ghost btn-sm" disabled={si === p.stages.length - 1} onClick={() => edit((x) => move(x.pipelines[pi].stages, si, 1))}><Icon n="arrowdown" size={12} className="-rotate-90" /></button><button aria-label={`Remove ${s.name}`} className="btn btn-ghost btn-sm" disabled={p.stages.length <= 2} onClick={() => edit((x) => x.pipelines[pi].stages.splice(si, 1))}><Icon n="trash" size={12} /></button></div>
+                  </div>
+                  {si < p.stages.length - 1 && <div className="w-8 flex flex-col items-center" aria-hidden><span className="h-px w-full bg-ink/40 relative"><span className="absolute -right-0.5 -top-[3px] size-1.5 rotate-45 border-t border-r border-ink/60" /></span></div>}
+                </li>
+              )
+            })}
+            <li className="shrink-0 flex items-center pl-3"><Btn icon="plus" onClick={() => edit((x) => x.pipelines[pi].stages.splice(x.pipelines[pi].stages.length - 1, 0, { id: 's' + Date.now(), name: 'New stage', kind: 'step' }))}>Stage</Btn></li>
           </ol>
-          <p className="text-xs muted">The Sales pipeline screen shows these stages as columns the moment you edit them.</p>
+          <div className="border-t border-rule px-4 py-2.5 text-[13px]" role="status" aria-label="Pipeline checks">{issues.length === 0 ? <span className="flex items-center gap-2"><Icon n="check" size={14} className="text-mehndi" />This flow is valid: one start, a reachable end, unique names. The pipeline screen shows these stages as columns.</span> : <ul className="space-y-0.5">{issues.map((m) => <li key={m} className="flex items-center gap-2 text-sindoor"><Icon n="alert" size={14} />{m}</li>)}</ul>}</div>
         </div>
       </Sec>
       <Sec title="Workflow builder" act={<Btn className="btn-sm" icon="plus" onClick={() => { edit((x) => x.workflows.push({ id: 'w' + Date.now(), name: 'New workflow', trigger: TRIG[0], conditions: [], actions: [ACT[0]], on: false })); setWi(c.workflows.length) }}>New workflow</Btn>}>

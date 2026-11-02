@@ -66,3 +66,13 @@
   @keyframes slidein { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
   .slide-in { animation: slidein 150ms ease-out; }
 }
+
+#print-root { display: none; }
+@media print {
+  body > #root, body > [data-overlay], .toasts { display: none !important; }
+  #print-root { display: block !important; position: static; }
+  #print-root .bill-doc { margin: 0 auto; box-shadow: none; }
+  @page { margin: 6mm; }
+  body[data-printfmt="thermal"] { }
+  html, body { background: #fff !important; }
+}

@@ -57,6 +57,16 @@ export const SEED_ITEMS: Record<PackId, Item[]> = {
     I('i6', 'FEE-BKS', 'Textbook set, class 6', '4901', 0, 'Set', 3150, 3150, 2500, [25, 0, 0], 15, 'Store', 'Store'),
   ],
   general: [
+    I('i1', 'GEN-0101', 'Steel water bottle, 750 ml, matte black', '7323', 18, 'Pcs', 899, 699, 430, [24, 60, 18], 20, 'Milton', 'Kitchen', 's1'),
+    I('i2', 'GEN-0215', 'Mixer grinder, 750 W, 3 jars', '8509', 18, 'Pcs', 4290, 3390, 2480, [6, 14, 4], 6, 'Preethi', 'Appliances', 's2'),
+    I('i3', 'GEN-0330', 'Cotton bedsheet set, king, floral', '6302', 12, 'Set', 1590, 1190, 720, [14, 30, 8], 12, 'Spaces', 'Home', 's3'),
+    I('i4', 'GEN-0507', 'School bag, 28 L, navy', '4202', 18, 'Pcs', 1490, 1090, 640, [12, 33, 9], 12, 'Wildcraft', 'Bags', 's1'),
+    I('i5', 'GEN-0802', 'Table lamp, LED, warm white', '9405', 12, 'Pcs', 799, 599, 340, [16, 28, 7], 10, 'Wipro', 'Lighting', 's3'),
+    I('i6', 'GEN-0915', 'Non-stick tawa, 28 cm', '7615', 18, 'Pcs', 749, 549, 310, [20, 44, 12], 15, 'Prestige', 'Kitchen', 's1'),
+    I('i7', 'GEN-0120', 'Gift hamper box, medium', '4819', 12, 'Pcs', 450, 350, 190, [30, 50, 10], 20, 'House', 'Gifts', 's2'),
+    I('i8', 'GEN-0044', 'Plastic storage box set, 3 pcs', '3924', 18, 'Set', 599, 449, 260, [18, 40, 10], 15, 'Cello', 'Home', 's2'),
+  ],
+  hardware: [
     I('i1', 'SAN-0101', 'Wall-hung closet, white, soft close', '6910', 18, 'Pcs', 11990, 9490, 6900, [4, 9, 2], 4, 'Hindware', 'Sanitaryware', 's1'),
     I('i2', 'SAN-0215', 'Single-lever basin mixer, chrome', '8481', 18, 'Pcs', 3490, 2790, 1760, [10, 24, 6], 8, 'Jaquar', 'Faucets', 's2'),
     I('i3', 'SAN-0330', 'Overhead rain shower, 8 inch', '8481', 18, 'Pcs', 2290, 1790, 1100, [7, 18, 3], 6, 'Cera', 'Faucets', 's2'),
@@ -65,6 +75,24 @@ export const SEED_ITEMS: Record<PackId, Item[]> = {
     I('i6', 'ELE-0915', 'LED batten 20 W, cool white', '9405', 12, 'Pcs', 499, 369, 215, [48, 120, 40], 60, 'Philips', 'Electricals', 's3'),
     I('i7', 'HWR-0120', 'Stainless sink, single bowl', '7324', 18, 'Pcs', 5890, 4690, 3100, [2, 8, 1], 4, 'Nirali', 'Kitchen', 's1'),
     I('i8', 'PIP-0044', 'CPVC pipe 1 inch, 3 m', '3917', 18, 'Pcs', 389, 310, 205, [90, 400, 120], 150, 'Astral', 'Plumbing', 's2'),
+  ],
+  grocery: [
+    I('i1', 'GRC-001', 'Matta rice, 5 kg', '1006', 0, 'Pkt', 395, 365, 318, [30, 80, 0], 40, 'Kerala Rice', 'Staples', 's1'),
+    I('i2', 'GRC-002', 'Coconut oil, 1 L', '1513', 5, 'Pcs', 245, 225, 196, [40, 90, 0], 50, 'KLF Nirmal', 'Oils', 's1'),
+    I('i3', 'GRC-003', 'Tea dust, 1 kg', '0902', 5, 'Pkt', 360, 330, 285, [25, 50, 0], 30, 'Wagh Bakri', 'Beverages', 's2'),
+    I('i4', 'GRC-004', 'Sugar, loose', '1701', 5, 'Kg', 46, 44, 39, [120, 400, 0], 150, 'Loose', 'Staples', 's1'),
+    I('i5', 'GRC-005', 'Toor dal, loose', '0713', 0, 'Kg', 168, 156, 138, [60, 220, 0], 80, 'Loose', 'Pulses', 's1'),
+    I('i6', 'GRC-006', 'Bread, sandwich, 400 g', '1905', 0, 'Pcs', 45, 42, 36, [30, 0, 0], 20, 'Modern', 'Bakery', 's2', { expiry: '2026-11-05' }),
+    I('i7', 'GRC-007', 'Milk, toned, 500 ml', '0401', 0, 'Pkt', 29, 28, 25, [80, 0, 0], 60, 'Milma', 'Dairy', 's2', { expiry: '2026-11-03' }),
+    I('i8', 'GRC-008', 'Detergent powder, 1 kg', '3402', 18, 'Pkt', 135, 118, 96, [35, 70, 0], 30, 'Surf', 'Household', 's1'),
+  ],
+  gym: [
+    I('i1', 'GYM-M01', 'Monthly membership', '9997', 18, 'Month', 1500, 1500, 0, [0, 0, 0], 0, 'Plans', 'Membership'),
+    I('i2', 'GYM-Q03', 'Quarterly membership', '9997', 18, 'Quarter', 4000, 3800, 0, [0, 0, 0], 0, 'Plans', 'Membership'),
+    I('i3', 'GYM-Y12', 'Annual membership', '9997', 18, 'Year', 13500, 12500, 0, [0, 0, 0], 0, 'Plans', 'Membership'),
+    I('i4', 'GYM-PT10', 'Personal training, 10 sessions', '9997', 18, 'Pack', 8000, 7500, 0, [0, 0, 0], 0, 'Training', 'Training'),
+    I('i5', 'GYM-LK1', 'Locker rental, monthly', '9972', 18, 'Month', 300, 300, 0, [0, 0, 0], 0, 'Plans', 'Add-on'),
+    I('i6', 'GYM-WH1', 'Whey protein, 1 kg', '2106', 18, 'Pcs', 2499, 2199, 1650, [10, 0, 0], 5, 'MuscleBlaze', 'Supplements'),
   ],
 }
 

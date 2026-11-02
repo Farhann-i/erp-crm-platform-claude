@@ -1,7 +1,8 @@
 import { createStore } from './store'
-import { defaultConfig, PACKS, PRESETS, type Config, type Mode, type PackId, type FieldDef } from './config'
+import { defaultConfig, term, PACKS, PRESETS, type Config, type Mode, type PackId, type FieldDef } from './config'
 import { SEED_ITEMS, SEED_PARTIES, SEED_LEDGERS, SEED_VOUCHERS, SEED_APPROVALS, SEED_CONFLICTS, SEED_NOTICES, seedInvoices, type Item, type Party, type Ledger, type Invoice, type Voucher, type Approval, type Conflict, type HeldBill, type Notice, type Line } from './data'
 import { contrast, onColor, mix } from './fmt'
+import { tr } from './i18n'
 
 export interface Change { id: string; at: string; by: string; version: number; summary: string[]; note: string; snapshot: Config }
 export interface AppState {
@@ -36,6 +37,7 @@ export function toast(text: string, tone: Toast['tone'] = 'ok', undo?: () => voi
 
 /* navigation */
 export const MODE_HOME: Record<Mode, string> = { counter: 'billing', books: 'vouchers', owner: 'owner', studio: 'studio/overview' }
+export const homeOf = (m: Mode) => (m === 'studio' ? MODE_HOME.studio : get().draft.homes?.[m] ?? MODE_HOME[m])
 export function go(route: string) {
   const s = get()
   const base = route.split('/')[0]
@@ -47,11 +49,11 @@ export function closeTab(r: string) {
   const s = get()
   const tabs = s.tabs.filter((t) => t !== r)
   set({ tabs })
-  if (s.route === r) go(tabs[tabs.length - 1] ?? MODE_HOME[s.mode])
+  if (s.route === r) go(tabs[tabs.length - 1] ?? homeOf(s.mode))
 }
 export function setMode(m: Mode) {
   set({ mode: m })
-  go(MODE_HOME[m])
+  go(homeOf(m))
 }
 export function syncFromHash() {
   const r = location.hash.replace(/^#\//, '')
@@ -68,7 +70,7 @@ export function edit(fn: (c: Config) => void) {
   fn(c)
   set({ draft: c })
 }
-const SECTIONS: [keyof Config, string][] = [['pack', 'Industry pack'], ['theme', 'Theme'], ['drcr', 'Dr and Cr colour'], ['layouts', 'Layouts'], ['terms', 'Terminology'], ['lang', 'Language'], ['company', 'Shop identity'], ['branches', 'Branch identity'], ['modules', 'Modules and features'], ['menu', 'Menu'], ['numbering', 'Document numbering'], ['pipelines', 'Pipelines'], ['workflows', 'Workflows'], ['approvals', 'Approval chains'], ['fields', 'Forms and fields']]
+const SECTIONS: [keyof Config, string][] = [['pack', 'Industry pack'], ['theme', 'Theme'], ['drcr', 'Dr and Cr colour'], ['layouts', 'Layouts'], ['terms', 'Terminology'], ['lang', 'Language'], ['company', 'Shop identity'], ['branches', 'Branch identity'], ['modules', 'Modules and features'], ['menu', 'Menu'], ['homes', 'Role home screens'], ['numbering', 'Document numbering'], ['pipelines', 'Pipelines'], ['workflows', 'Workflows'], ['approvals', 'Approval chains'], ['fields', 'Forms and fields']]
 export function pendingChanges(): string[] {
   const { published, draft } = get()
   return SECTIONS.filter(([k]) => JSON.stringify(published[k]) !== JSON.stringify(draft[k])).map(([, l]) => l)
@@ -104,6 +106,26 @@ export function runChecks(c: Config): Check[] {
   out.push({ id: 'gr', label: 'Guardrails intact', ok: locked.length === 0, detail: locked.length ? 'Platform and Identity modules cannot be switched off.' : 'Audit trail, masking, period locks and signed tax packs are untouched.' })
   const bad = ['item', 'party'].filter((e) => !c.fields[e].every((f) => !f.locked || (f.required && f.visible)))
   out.push({ id: 'rf', label: 'Statutory fields', ok: bad.length === 0, detail: bad.length ? 'HSN, GST rate and name must stay visible and required.' : 'HSN, GST rate and name are still required.' })
+  const issues = pipelineIssues(c)
+  out.push({ id: 'pl', label: 'Pipelines are valid', ok: issues.length === 0, detail: issues[0] ?? 'Every pipeline has one start, an end, named stages and reachable steps.' })
+  const hm = (['counter', 'books', 'owner'] as const).filter((m) => !vis(m).some((i) => i.route === c.homes?.[m]))
+  out.push({ id: 'hm', label: 'Role homes resolve', ok: hm.length === 0, detail: hm.length ? `The home screen for ${hm.join(', ')} is hidden or not in that menu.` : 'Each work mode opens on a screen it can reach.' })
+  return out
+}
+export function pipelineIssues(c: Config): string[] {
+  const out: string[] = []
+  for (const p of c.pipelines) {
+    const starts = p.stages.filter((s) => s.kind === 'start').length, ends = p.stages.filter((s) => s.kind === 'end').length
+    if (starts !== 1) out.push(`${p.name}: needs exactly one Start stage (has ${starts}).`)
+    if (ends < 1) out.push(`${p.name}: needs at least one End stage.`)
+    if (p.stages[0] && p.stages[0].kind !== 'start') out.push(`${p.name}: the first stage must be the Start.`)
+    if (p.stages.length && p.stages[p.stages.length - 1].kind !== 'end') out.push(`${p.name}: the last stage must be an End.`)
+    const names = p.stages.map((s) => s.name.trim().toLowerCase())
+    if (names.some((n) => !n)) out.push(`${p.name}: every stage needs a name.`)
+    if (new Set(names).size !== names.length) out.push(`${p.name}: stage names must be unique.`)
+    p.stages.forEach((s, i) => { if (s.back && p.stages.findIndex((x) => x.id === s.back) >= i) out.push(`${p.name}: "${s.name}" can only send back to an earlier stage.`) })
+    p.stages.forEach((s, i) => { if (s.kind === 'end' && i < p.stages.length - 1) out.push(`${p.name}: "${s.name}" ends the flow but stages follow it.`) })
+  }
   return out
 }
 export function publish(note: string): boolean {
@@ -166,3 +188,8 @@ export function bumpNo(doc: string) {
 /* terminology and menu helpers */
 export const useCfg = () => useApp((s) => s.draft)
 export { term } from './config'
+
+export function labelOf(c: Config, i: { label: string; ml?: string; hi?: string }): string {
+  const o = c.lang === 'ml' ? i.ml : c.lang === 'hi' ? i.hi : undefined
+  return term(c, o || tr(c.lang, i.label))
+}
