@@ -20,7 +20,7 @@ const init: AppState = {
   items: SEED_ITEMS.textile, parties: SEED_PARTIES, ledgers: SEED_LEDGERS, invoices: seedInvoices(SEED_ITEMS.textile), vouchers: SEED_VOUCHERS, approvals: SEED_APPROVALS, conflicts: SEED_CONFLICTS, held: [], notices: SEED_NOTICES,
   rows: {}, bill: { partyId: 'c0', lines: [], note: '' }, offline: false, pending: 0, aiOn: true,
 }
-export const app = createStore<AppState>('erp-proto-v3', init, ['published', 'draft', 'changes', 'version', 'mode', 'night', 'margin', 'branchId', 'items', 'parties', 'ledgers', 'invoices', 'vouchers', 'approvals', 'conflicts', 'held', 'notices', 'rows', 'bill', 'offline', 'pending', 'aiOn'])
+export const app = createStore<AppState>('erp-proto-v4', init, ['published', 'draft', 'changes', 'version', 'mode', 'night', 'margin', 'branchId', 'items', 'parties', 'ledgers', 'invoices', 'vouchers', 'approvals', 'conflicts', 'held', 'notices', 'rows', 'bill', 'offline', 'pending', 'aiOn'])
 export const set = app.set
 export const get = app.get
 export const useApp = app.use

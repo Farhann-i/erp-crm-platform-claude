@@ -37,7 +37,7 @@ export function taxSplit(inv: Invoice, party?: Party, home = '32') {
     const rs = rows.filter((r) => r.l.gst === g)
     return { g, taxable: rs.reduce((a, r) => a + r.taxable, 0), tax: rs.reduce((a, r) => a + r.tax, 0) }
   })
-  const raw = inv.sub + inv.tax
+  const raw = inv.sub + inv.tax + (inv.extra ?? 0)
   return { inter, rows, slabs, round: inv.total - raw }
 }
 
@@ -66,6 +66,7 @@ export function BillDoc({ inv, b, party, fmt, dup, opts }: { inv: Invoice; b: Br
         {x.slabs.map((s) => x.inter
           ? <div key={s.g} style={{ display: 'flex', justifyContent: 'space-between' }}><span>IGST {s.g}%</span><span>{inr(s.tax)}</span></div>
           : <div key={s.g}><div style={{ display: 'flex', justifyContent: 'space-between' }}><span>CGST {s.g / 2}%</span><span>{inr(s.tax / 2)}</span></div><div style={{ display: 'flex', justifyContent: 'space-between' }}><span>SGST {s.g / 2}%</span><span>{inr(s.tax / 2)}</span></div></div>)}
+        {!!inv.extra && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Freight and charges</span><span>{inr(inv.extra)}</span></div>}
         {Math.abs(x.round) > 0.004 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Round off</span><span>{inr(x.round)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 14, marginTop: 3 }}><span>TOTAL</span><span>{inr(inv.total, 2)}</span></div>
         <div>Paid by {inv.pay}{inv.total - inv.paid > 0.5 ? ` · Due ${inr(inv.total - inv.paid)}` : ''}</div>
@@ -108,6 +109,7 @@ export function BillDoc({ inv, b, party, fmt, dup, opts }: { inv: Invoice; b: Br
         <div style={{ minWidth: 190 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Taxable value</span><span className="num">{inr(inv.sub)}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>GST</span><span className="num">{inr(inv.tax)}</span></div>
+          {!!inv.extra && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Freight and charges</span><span className="num">{inr(inv.extra)}</span></div>}
           {Math.abs(x.round) > 0.004 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Round off</span><span className="num">{inr(x.round)}</span></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, borderTop: '1.5px solid #111', marginTop: 3, paddingTop: 3 }}><span>Total</span><span className="num">{inr(inv.total)}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Received ({inv.pay})</span><span className="num">{inr(inv.paid)}</span></div>

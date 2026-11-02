@@ -188,8 +188,9 @@ export function Tender({ onClose }: { onClose: () => void }) {
   const b = useBill()
   const mode = useApp((s) => s.mode)
   const approvalOn = useApp((s) => s.draft.approvals.find((a) => a.id === 'a1')?.on)
-  const total = b.totals.total
-  const [p, setP] = useState({ cash: total, upi: 0, card: 0, credit: 0 })
+  const [extra, setExtra] = useState(0)
+  const total = b.totals.total + extra
+  const [p, setP] = useState({ cash: b.totals.total, upi: 0, card: 0, credit: 0 })
   const sum = p.cash + p.upi + p.card + p.credit
   const rem = total - sum
   const walk = b.party.id === 'c0'
@@ -206,7 +207,7 @@ export function Tender({ onClose }: { onClose: () => void }) {
       return toast('Discount is above 10%. The bill is held and a request went to the manager.', 'warn')
     }
     const no = nextNo('Sales invoice')
-    const inv: Invoice = { id: 'inv' + Date.now(), no, date: today(), partyId: b.bill.partyId, partyName: b.party.name, branch: 'Kochi Main', lines: b.bill.lines, sub: b.totals.sub, tax: b.totals.tax, total, paid: sum - p.credit, status: 'posted', pay: [p.cash && 'Cash', p.upi && 'UPI', p.card && 'Card', p.credit && 'Credit'].filter(Boolean).join(' + '), by: mode === 'counter' ? 'Divya (cashier)' : 'Salim (manager)' }
+    const inv: Invoice = { id: 'inv' + Date.now(), no, date: today(), partyId: b.bill.partyId, partyName: b.party.name, branch: 'Kochi Main', lines: b.bill.lines, sub: b.totals.sub, tax: b.totals.tax, extra, total, paid: sum - p.credit, status: 'posted', pay: [p.cash && 'Cash', p.upi && 'UPI', p.card && 'Card', p.credit && 'Credit'].filter(Boolean).join(' + '), by: mode === 'counter' ? 'Divya (cashier)' : 'Salim (manager)' }
     set((s) => ({
       invoices: [inv, ...s.invoices],
       items: s.items.map((it) => { const q = inv.lines.filter((l) => l.itemId === it.id).reduce((a, l) => a + l.qty, 0); return q ? { ...it, stock: { ...it.stock, show: it.stock.show - q } } : it }),
@@ -229,6 +230,7 @@ export function Tender({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} title="Tender" foot={<><Btn onClick={onClose}>Back to bill</Btn><Btn kind="primary" className="btn-lg" onClick={save}>Save bill and print</Btn></>}>
       <div onKeyDown={(e) => e.key === 'Enter' && save()} className="space-y-3">
         <div className="flex justify-between items-baseline"><span className="muted">Amount due</span><span className="text-3xl font-semibold num">{inr0(total)}</span></div>
+        <div className="flex items-center gap-3"><Icon n="truck" className="muted" /><span className="w-16 text-[13px] leading-tight">Freight, other</span><input aria-label="Freight and other charges" type="number" min={0} className="inp num h-9 text-right" value={extra || ''} placeholder="0" onChange={(e) => { const x = Math.max(0, +e.target.value); setP({ ...p, cash: Math.max(0, p.cash + x - extra) }); setExtra(x) }} /></div>
         {row('cash', 'Cash', 'wallet')}{row('upi', 'UPI', 'qr')}{row('card', 'Card', 'card')}{row('credit', 'Credit', 'book', walk)}
         {walk && <p className="text-xs muted">Credit is off for a walk-in customer.</p>}
         {p.upi > 0 && <div className="flex items-center gap-3 p-2 border border-rule rounded"><Qr /><div className="text-xs muted">Demo QR for {inr0(p.upi)}. No payment is collected in this prototype.</div></div>}

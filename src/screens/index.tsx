@@ -9,8 +9,9 @@ import { Generic, SPECS } from './Generic'
 import { Approvals, Sync, Ask, Pipeline, Printing, Users, Ledgers, Gstr } from './Special'
 import { Phone } from './Mobile'
 import { Inbox, Campaigns } from './Messaging'
+import { DayClose, Rights, Labels, ImportData, ReturnFromBill } from './Gaps'
 
-const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables' }
+const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables', balance: 'balance', cashflow: 'cashflow', stockledger: 'stockledger' }
 
 export function Screen({ route }: { route: string }) {
   const c = useApp((s) => s.draft)
@@ -39,6 +40,11 @@ export function Screen({ route }: { route: string }) {
     case 'ask': return <Ask />
     case 'printing': return <Printing />
     case 'users': return <Users />
+    case 'returns': return <ReturnFromBill />
+    case 'dayclose': return <DayClose />
+    case 'rights': return <Rights />
+    case 'labels': return <Labels />
+    case 'import': return <ImportData />
     case 'inbox': return <Inbox />
     case 'campaigns': return <Campaigns />
   }
