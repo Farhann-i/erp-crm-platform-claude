@@ -10,6 +10,7 @@ import { Generic, SPECS } from './Generic'
 import { Approvals, Sync, Ask, Pipeline, Printing, Users, Ledgers, Gstr } from './Special'
 import { Phone } from './Mobile'
 import { Hub } from './Hub'
+import { Prompts } from './Prompts'
 import { SETTINGS, SettingsPage } from './Settings'
 import { Inbox, Campaigns } from './Messaging'
 import { DayClose, Rights, Labels, ImportData, ReturnFromBill } from './Gaps'
@@ -63,6 +64,7 @@ function Inner({ route }: { route: string }) {
     case 'campaigns': return <Campaigns />
   }
   if (route === 'desks') return <Hub />
+  if (route === 'prompts') return <Prompts />
   if (SETTINGS[route]) return <SettingsPage key={route} route={route} />
   if (SPECS[route]) return <Generic key={route} route={route} />
   return <Restricted what={`There is no screen at "${route}". Use the menu or press Ctrl+K.`} />
