@@ -14,7 +14,7 @@ import { SETTINGS, SettingsPage } from './Settings'
 import { Inbox, Campaigns } from './Messaging'
 import { DayClose, Rights, Labels, ImportData, ReturnFromBill } from './Gaps'
 
-const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables', balance: 'balance', cashflow: 'cashflow', stockledger: 'stockledger' }
+const REPORT_ROUTES: Record<string, string> = { reports: 'sales', invoices: 'sales', daybook: 'daybook', trial: 'trial', pnl: 'pnl', outstanding: 'ageing', payables: 'payables', balance: 'balance', cashbook: 'cashbook', ledgerbook: 'ledgerbook', trading: 'trading', modified: 'modified', rotation: 'rotation', dimension: 'dimension', voucherreg: 'voucherreg', stockageing: 'stockageing', lowstock: 'lowstock', hsnsum: 'hsnsum', branchcmp: 'branchcmp', profit: 'profit', weekday: 'weekday', basket: 'basket', points: 'points', commrep: 'commrep', cashflow: 'cashflow', stockledger: 'stockledger' }
 
 export function Screen({ route }: { route: string }) {
   return <RouteCtx.Provider value={route}><Gate route={route} /></RouteCtx.Provider>

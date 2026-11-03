@@ -71,6 +71,9 @@ export default function Shell() {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
+  const [collapsed, setCollapsed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('erp-nav-shut') ?? 'null') ?? menu.map((g) => g.id).filter((id) => !['home', 'counter', 'sales', 'stock', 'books'].includes(id)) } catch { return [] } })
+  const toggleGroup = (id: string) => setCollapsed((cur) => { const n = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]; try { localStorage.setItem('erp-nav-shut', JSON.stringify(n)) } catch { /* ignore */ } return n })
+
   if (!user) return <SignIn />
   if (narrow) return <><Phone full /><Toasts /><PrintDialog /></>
   const studio = s.mode === 'studio'
@@ -120,10 +123,13 @@ export default function Shell() {
       <div className="flex-1 min-h-0 flex">
         {!counter && !studio && (
           <nav aria-label="Main" className="w-[212px] shrink-0 border-r border-rule bg-sheet scroll py-2">
-            {menu.map((g) => (
-              <div key={g.id} className="mb-2">
-                <div className="px-4 pt-1 pb-0.5 text-[11.5px] font-medium muted">{term(c, tr(c.lang, g.label))}</div>
-                {g.items.map((i) => {
+            {menu.map((g) => {
+              const hasCur = g.items.some((i) => i.route === s.route)
+              const shut = collapsed.includes(g.id) && !hasCur
+              return (
+              <div key={g.id} className="mb-1">
+                <button aria-expanded={!shut} onClick={() => toggleGroup(g.id)} className="w-full flex items-center justify-between px-4 pt-1.5 pb-1 text-[11.5px] font-medium muted hover:text-ink"><span>{term(c, tr(c.lang, g.label))}</span><span className="flex items-center gap-1 num">{shut && <span>{g.items.length}</span>}<Icon n={shut ? 'right' : 'down'} size={12} /></span></button>
+                {!shut && g.items.map((i) => {
                   const on = s.route === i.route
                   return (
                     <button key={i.id} onClick={() => go(i.route)} aria-current={on ? 'page' : undefined} className={`w-full flex items-center gap-2.5 h-8 px-4 text-[13px] text-left relative ${on ? 'bg-neel/10 font-medium text-neel' : 'hover:bg-wash'}`}>
@@ -133,7 +139,8 @@ export default function Shell() {
                   )
                 })}
               </div>
-            ))}
+              )
+            })}
             <div className="px-4 pt-3 text-[11px] muted border-t border-rule mx-0 mt-3">Menu from {c.pack} pack, config v{s.version}</div>
           </nav>
         )}

@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { useApp, set, toast, go, term } from '../lib/app'
 import { inr0, today, dmy } from '../lib/fmt'
 import { MORE_SPECS } from './Gaps'
+import { LIST_SPECS } from './Lists'
 import { useCan } from '../lib/rights'
 import { Btn, DataTable, Drawer, Field, PageHead, Status, Confirm, useT, type Col } from '../ui/kit'
 
@@ -70,7 +71,7 @@ R('cv20', { module: 'Industry packs', state: 'Partial', where: 'Five packs draft
   gst2b: { title: '2B reconciliation', sub: 'Supplier invoices in GSTR-2B against your purchase entries.', group: 'Bank and GST', cols: [['sup', 'Supplier'], ['bill', 'Bill'], ['tax', 'GST', 'money'], ['books', 'In books'], ['status', 'State', 'status']], filterKey: 'status', flow: [{ from: 'Mismatch', to: 'Matched', label: 'Accept 2B value' }], seed: [R('rg1', { sup: 'Kanchi Silk Weavers', bill: 'KS/2210', tax: 8800, books: 'Yes', status: 'Matched' }), R('rg2', { sup: 'Welspun Distributors Kerala', bill: 'WD/8841', tax: 25300, books: 'Amount differs', status: 'Mismatch' }), R('rg3', { sup: 'Balaramapuram Handloom Society', bill: 'BH/330', tax: 2100, books: 'Missing', status: 'Mismatch' })] },
 }
 
-Object.assign(SPECS, MORE_SPECS)
+Object.assign(SPECS, MORE_SPECS, LIST_SPECS)
 
 export function Generic({ route }: { route: string }) {
   const spec = SPECS[route]
