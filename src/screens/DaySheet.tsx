@@ -3,6 +3,7 @@ import { useApp, set, toast, go } from '../lib/app'
 import { inr0, compact, today, dmy } from '../lib/fmt'
 import { Bal, Btn, Spark, Status, PageHead, useT } from '../ui/kit'
 import { ctx } from '../shell/ctx'
+import { WidgetStrip } from './Phase5b'
 
 export function decide(id: string, status: 'approved' | 'rejected') {
   set((s) => ({ approvals: s.approvals.map((a) => (a.id === id ? { ...a, status } : a)), notices: [{ id: 'n' + Date.now(), text: `Request ${status}: ${s.approvals.find((a) => a.id === id)?.title}`, at: 'Just now', read: false }, ...s.notices] }))
@@ -63,6 +64,7 @@ export function DaySheet() {
       <PageHead title={`Good morning. ${s.draft.company.display}`} sub={`${dmy(today())}. Every figure opens its source. Read it as questions, top to bottom.`} crumbs={['Home', 'Day sheet']}>
         <Btn icon="spark" onClick={() => go('ask')}>Read the daily briefing</Btn>
       </PageHead>
+      <WidgetStrip />
       <div className={`mx-5 mb-6 panel px-5 ${layout === 'split' ? 'grid lg:grid-cols-2 gap-x-8' : ''}`}>
         {layout === 'split' ? <><div>{A}</div><div>{B}</div></> : <>{A}{B}</>}
       </div>

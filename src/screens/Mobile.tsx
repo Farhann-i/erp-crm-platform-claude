@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useApp, set, toast, go, setMode } from '../lib/app'
 import { inr0, today } from '../lib/fmt'
 import { Icon } from '../ui/icons'
@@ -52,12 +52,26 @@ function Day() {
     </>
   )
 }
+function Swipe({ children, onLeft, onRight }: { children: React.ReactNode; onLeft: () => void; onRight: () => void }) {
+  const [dx, setDx] = useState(0); const x0 = useRef<number | null>(null)
+  return (
+    <div className="relative mb-2.5 overflow-hidden rounded-lg">
+      <div className="absolute inset-0 flex items-center justify-between px-4 text-sm font-medium" aria-hidden><span className="text-mehndi">Approve</span><span className="text-sindoor">Reject</span></div>
+      <div className="relative bg-cotton" style={{ transform: `translateX(${dx}px)`, transition: x0.current === null ? 'transform .2s' : 'none', touchAction: 'pan-y' }}
+        onPointerDown={(e) => { x0.current = e.clientX; (e.target as Element).setPointerCapture?.(e.pointerId) }}
+        onPointerMove={(e) => { if (x0.current !== null) setDx(Math.max(-140, Math.min(140, e.clientX - x0.current))) }}
+        onPointerUp={() => { const d = dx; x0.current = null; setDx(0); if (d > 90) onRight(); else if (d < -90) onLeft() }}
+        onPointerCancel={() => { x0.current = null; setDx(0) }}>{children}</div>
+    </div>
+  )
+}
 function Appr() {
   const a = useApp((x) => x.approvals).filter((x) => x.status === 'pending')
   return (
     <>
       {a.length === 0 && <p className="muted text-center py-10">All caught up.</p>}
-      {a.map((x) => <Card key={x.id}><div className="chip mb-1">{x.kind}</div><div className="font-medium">{x.title}</div><p className="text-xs muted mt-1">{x.detail}</p><div className="grid grid-cols-2 gap-2 mt-3"><button className="btn btn-lg justify-center btn-danger" onClick={() => decide(x.id, 'rejected')}>Reject</button><button className="btn btn-lg btn-primary justify-center" onClick={() => decide(x.id, 'approved')}>Approve</button></div></Card>)}
+      {a.length > 0 && <p className="text-xs muted mb-2">Swipe a card right to approve, left to reject.</p>}
+      {a.map((x) => <Swipe key={x.id} onRight={() => decide(x.id, 'approved')} onLeft={() => decide(x.id, 'rejected')}><Card><div className="chip mb-1">{x.kind}</div><div className="font-medium">{x.title}</div><p className="text-xs muted mt-1">{x.detail}</p><div className="grid grid-cols-2 gap-2 mt-3"><button className="btn btn-lg justify-center btn-danger" onClick={() => decide(x.id, 'rejected')}>Reject</button><button className="btn btn-lg btn-primary justify-center" onClick={() => decide(x.id, 'approved')}>Approve</button></div></Card></Swipe>)}
     </>
   )
 }

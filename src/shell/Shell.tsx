@@ -14,6 +14,7 @@ import { Palette } from './Palette'
 import { Pulse, Notifications } from './Pulse'
 import { Screen } from '../screens'
 import { Studio } from '../studio/Studio'
+import { StudioGate } from '../screens/Phase5b'
 import { Phone } from '../screens/Mobile'
 
 export function useMenu() {
@@ -162,7 +163,7 @@ export default function Shell() {
           )}
           <div className="flex-1 min-h-0 flex">
             <main id="main" className="flex-1 min-w-0 flex flex-col min-h-0 bg-cotton">
-              {studio ? <Studio /> : <Screen route={known || s.route.startsWith('studio') ? s.route : s.route} />}
+              {studio ? <StudioGate><Studio /></StudioGate> : <Screen route={known || s.route.startsWith('studio') ? s.route : s.route} />}
             </main>
             {!studio && s.margin && !['owner', 'phone', 'ask'].includes(s.route) && <Margin />}
           </div>

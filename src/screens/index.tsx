@@ -12,6 +12,8 @@ import { Phone } from './Mobile'
 import { Hub } from './Hub'
 import { Prompts } from './Prompts'
 import { PackTools, Help, FirstRun, CustomerDisplay, ShareLink, Briefing, Attachments } from './Tools'
+import { VariantMatrix, SizeColour, VoiceBilling, CameraScan, Forecast } from './Phase5'
+import { TwoFactor, RuleBuilder, WidgetDesigner, Leases, Consolidate, NumGaps } from './Phase5b'
 import { SETTINGS, SettingsPage } from './Settings'
 import { Inbox, Campaigns } from './Messaging'
 import { DayClose, Rights, Labels, ImportData, ReturnFromBill } from './Gaps'
@@ -66,6 +68,8 @@ function Inner({ route }: { route: string }) {
   }
   if (route === 'desks') return <Hub />
   if (route === 'prompts') return <Prompts />
+  const P5: Record<string, React.ReactElement> = { variants: <VariantMatrix />, sizecolour: <SizeColour />, voicebill: <VoiceBilling />, scan: <CameraScan />, forecast: <Forecast />, twofactor: <TwoFactor />, rules: <RuleBuilder />, widgets: <WidgetDesigner />, leases: <Leases />, consolidate: <Consolidate />, numgaps: <NumGaps /> }
+  if (P5[route]) return P5[route]
   if (route === 'packtools') return <PackTools />
   if (route === 'help') return <Help />
   if (route === 'firstrun') return <FirstRun />

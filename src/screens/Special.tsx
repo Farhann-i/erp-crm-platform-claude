@@ -64,6 +64,7 @@ export function Sync() {
   )
 }
 
+import { VoiceButton, Rate } from './Phase5'
 export function Ask() {
   const s = useApp((x) => x)
   const mode = s.mode
@@ -88,7 +89,7 @@ export function Ask() {
       </PageHead>
       {!s.aiOn && <div className="mx-5 mb-3 panel p-3 text-[13px]">The assistant is switched off by an administrator (kill switch in Admin Studio).</div>}
       <div className="px-5 pb-6 max-w-3xl space-y-3">
-        <div className="flex gap-2"><input className="inp h-10" aria-label="Ask a question" placeholder="Who owes us the most? What is running out? Make a bill for Anitha Menon." value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} /><Btn kind="primary" className="btn-lg" onClick={send}>Ask</Btn></div>
+        <div className="flex gap-2"><input className="inp h-10" aria-label="Ask a question" placeholder="Who owes us the most? What is running out? Make a bill for Anitha Menon." value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} /><VoiceButton onText={(t) => { setLog((l) => [{ q: t, a: answer(t) }, ...l]) }} /><Btn kind="primary" className="btn-lg" onClick={send}>Ask</Btn></div>
         <div className="flex gap-2 flex-wrap">{['Who owes us the most?', 'What is running out?', 'Summarise today', 'Show profit this month', 'Create a bill for Anitha Menon'].map((x) => <button key={x} className="chip h-7 px-3 bg-sheet hover:bg-wash" onClick={() => { setLog([{ q: x, a: answer(x) }, ...log]) }}>{x}</button>)}</div>
         {draft && (
           <div className="panel draft-edge p-4"><div className="flex justify-between"><h2 className="font-semibold">Draft bill for Anitha Menon</h2><Status s="Draft" /></div>
@@ -96,7 +97,7 @@ export function Ask() {
             <div className="text-xs muted mt-2">Tape: Dr Anitha Menon ₹2,847 · Cr Sales ₹2,712 · Cr Output GST ₹135</div>
             <div className="flex gap-2 mt-3 justify-end"><Btn onClick={() => { setDraft(false); toast('Draft discarded.', 'info') }}>Discard</Btn><Btn kind="primary" onClick={() => { setDraft(false); toast('Draft sent to the billing screen for review. Nothing was posted.'); go('billing') }}>Confirm and open in billing</Btn></div></div>
         )}
-        {log.map((l, i) => <div key={i} className="space-y-1"><div className="text-xs muted">You asked</div><div className="font-medium text-[13px]">{l.q}</div><div className="panel p-3 text-[13px]">{l.a}</div></div>)}
+        {log.map((l, i) => <div key={i} className="space-y-1"><div className="text-xs muted">You asked</div><div className="font-medium text-[13px]">{l.q}</div><div className="panel p-3 text-[13px]">{l.a}<Rate q={l.q} /></div></div>)}
         <p className="text-xs muted">Prototype note: answers are scripted from your demo data. No model is running.</p>
       </div>
     </div>
