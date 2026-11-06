@@ -1,3 +1,4 @@
+import { logHist } from '../ui/History'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp, set, get, toast, go, nextNo, bumpNo } from '../lib/app'
 import { calc, type Item, type Line, type Invoice } from '../lib/data'
@@ -215,6 +216,7 @@ export function Tender({ onClose }: { onClose: () => void }) {
       ledgers: s.ledgers.map((l) => (l.name === 'Cash in hand' ? { ...l, bal: l.bal + p.cash } : l.name.startsWith('HDFC') ? { ...l, bal: l.bal + p.upi } : l)),
       pending: s.offline ? s.pending + 1 : s.pending,
     }))
+    logHist('invoices', inv.id, 'Posted', [['Total', '', String(Math.round(total))], ['Paid', '', String(Math.round(inv.paid))]])
     bumpNo('Sales invoice')
     b.clear(); onClose()
     openPrint(inv)

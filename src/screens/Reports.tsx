@@ -1,3 +1,4 @@
+import { HistoryList } from '../ui/History'
 import { useMemo, useState } from 'react'
 import { useApp, set, toast, go } from '../lib/app'
 import { inr, inr0, dmy, downloadCsv, today } from '../lib/fmt'
@@ -15,7 +16,9 @@ export function ReportViewer({ initial = 'sales' }: { initial?: string }) {
   const [to, setTo] = useState(today())
   const [group, setGroup] = useState('none')
   const [drill, setDrill] = useState<Invoice | null>(null)
-  const [views, setViews] = useState<{ n: string; rep: string; group: string }[]>(() => s.rows.views as never ?? [{ n: 'Branch sales this month', rep: 'sales', group: 'branch' }])
+  type View = { n: string; rep: string; group: string; from: string; to: string; hide: string[] }
+  const [views, setViews] = useState<View[]>(() => (s.rows.views as never as View[] | undefined) ?? [{ n: 'Branch sales this month', rep: 'sales', group: 'branch', from: '2026-11-01', to: today(), hide: [] }])
+  const [hideSt, setHide] = useState<string[] | null>(null); const [vname, setVname] = useState(''); const [cur, setCur] = useState('')
   const inRange = <T extends { date: string }>(a: T[]) => a.filter((x) => x.date >= from && x.date <= to)
   const { cols, rows }: { cols: Col<Row>[]; rows: Row[] } = useMemo(() => {
     const inv = inRange(s.invoices).filter((i) => i.status !== 'draft')
@@ -85,25 +88,31 @@ export function ReportViewer({ initial = 'sales' }: { initial?: string }) {
     return { cols: [{ key: 'rate', label: 'GST rate' }, { key: 'taxable', label: 'Taxable value', num: true, total: true, render: (r) => inr0(+r.taxable) }, { key: 'cgst', label: 'CGST', num: true, total: true, render: (r) => inr0(+r.cgst) }, { key: 'sgst', label: 'SGST', num: true, total: true, render: (r) => inr0(+r.sgst) }], rows: [...m.values()] }
   }, [rep, from, to, group, s.invoices, s.vouchers, s.ledgers, s.items, s.parties])
   const title = REPORTS.find((r) => r[0] === rep)![1]
+  const hide = hideSt ?? cols.filter((c) => c.off).map((c) => c.key)
+  const shown = cols.filter((c) => !hide.includes(c.key))
+  const persist = (nv: View[]) => { setViews(nv); set((st) => ({ rows: { ...st.rows, views: nv as never } })) }
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <PageHead title={title} crumbs={['Reports']} sub={`${dmy(from)} to ${dmy(to)}. Totals stay pinned. Click a row to open its source.`}>
-        <Btn needs="X" icon="download" onClick={() => downloadCsv(`${rep}-${to}.csv`, cols.map((c) => c.label), rows.map((r) => cols.map((c) => r[c.key] ?? '')))}>Export CSV</Btn>
+        <Btn needs="X" icon="download" onClick={() => downloadCsv(`${rep}-${to}.csv`, shown.map((c) => c.label), rows.map((r) => shown.map((c) => r[c.key] ?? '')))}>Export CSV</Btn>
       </PageHead>
       <div className="px-5 pb-3 flex items-center gap-3 flex-wrap text-xs">
-        <label className="flex items-center gap-1.5"><span className="muted">Report</span><select className="inp w-44" value={rep} onChange={(e) => { setRep(e.target.value); setGroup('none') }}>{REPORTS.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></label>
+        <label className="flex items-center gap-1.5"><span className="muted">Report</span><select className="inp w-44" value={rep} onChange={(e) => { setRep(e.target.value); setGroup('none'); setHide(null); setCur('') }}>{REPORTS.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></label>
         <label className="flex items-center gap-1.5"><span className="muted">From</span><input type="date" className="inp w-36" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
         <label className="flex items-center gap-1.5"><span className="muted">To</span><input type="date" className="inp w-36" value={to} onChange={(e) => setTo(e.target.value)} /></label>
         {rep === 'sales' && <label className="flex items-center gap-1.5"><span className="muted">Group by</span><select className="inp w-32" value={group} onChange={(e) => setGroup(e.target.value)}><option value="none">No grouping</option><option value="branch">Branch</option><option value="party">{t('{customer}')}</option><option value="pay">Payment mode</option><option value="month">Month</option></select></label>}
         <span className="flex-1" />
-        <label className="flex items-center gap-1.5"><span className="muted">Saved views</span><select className="inp w-48" value="" onChange={(e) => { const v = views.find((x) => x.n === e.target.value); if (v) { setRep(v.rep); setGroup(v.group) } }}><option value="">Choose a view</option>{views.map((v) => <option key={v.n}>{v.n}</option>)}</select></label>
-        <Btn className="btn-sm" onClick={() => { const n = `${title}${group !== 'none' ? ' by ' + group : ''}`; const nv = [...views.filter((v) => v.n !== n), { n, rep, group }]; setViews(nv); set((st) => ({ rows: { ...st.rows, views: nv as never } })); toast(`View "${n}" saved.`) }}>Save view</Btn>
+        <label className="flex items-center gap-1.5"><span className="muted">Saved views</span><select className="inp w-48" value={cur} onChange={(e) => { setCur(e.target.value); const v = views.find((x) => x.n === e.target.value); if (v) { setRep(v.rep); setGroup(v.group); setFrom(v.from ?? from); setTo(v.to ?? to); setHide(v.hide ?? null) } }}><option value="">Choose a view</option>{views.map((v) => <option key={v.n}>{v.n}</option>)}</select></label>
+        <input className="inp w-40" aria-label="Name for this view" placeholder="Name this view" value={vname} onChange={(e) => setVname(e.target.value)} />
+        <Btn className="btn-sm" onClick={() => { const n = vname.trim() || `${title}${group !== 'none' ? ' by ' + group : ''}`; persist([...views.filter((v) => v.n !== n), { n, rep, group, from, to, hide }]); setCur(n); setVname(''); toast(`View "${n}" saved with its dates, grouping and columns.`) }}>Save view</Btn>
+        {cur && <Btn className="btn-sm" needs="D" onClick={() => { persist(views.filter((v) => v.n !== cur)); toast(`View "${cur}" deleted.`, 'warn'); setCur('') }}>Delete view</Btn>}
       </div>
-      <DataTable name="rows" rows={rows} cols={cols} pageSize={14} onOpen={(r) => { const i = s.invoices.find((x) => x.id === r.id); if (i) setDrill(i); else if (rep === 'ageing' || rep === 'payables') go('parties'); else toast('This row has no single source document. Use grouping off to drill down.', 'info') }} />
+      <DataTable name="rows" rows={rows} cols={cols} hidden={hide} onHidden={setHide} pageSize={14} onOpen={(r) => { const i = s.invoices.find((x) => x.id === r.id); if (i) setDrill(i); else if (rep === 'ageing' || rep === 'payables') go('parties'); else toast('This row has no single source document. Use grouping off to drill down.', 'info') }} />
       <Drawer open={!!drill} onClose={() => setDrill(null)} title={drill?.no ?? ''}>
         {drill && <div className="space-y-3 text-[13px]"><div className="flex justify-between"><span>{drill.partyName}</span><Status s={drill.status} /></div><div className="muted text-xs">{drill.branch} · {dmy(drill.date)} · {drill.by}</div>
           <table className="tbl"><tbody>{drill.lines.map((l, i) => <tr key={i}><td>{l.name}</td><td className="num">{l.qty}</td><td className="num">{inr0(l.qty * l.rate)}</td></tr>)}</tbody></table>
-          <div className="flex justify-between border-t border-rule pt-2 font-medium"><span>Total incl. GST</span><span className="num">{inr(drill.total)}</span></div></div>}
+          <div className="flex justify-between border-t border-rule pt-2 font-medium"><span>Total incl. GST</span><span className="num">{inr(drill.total)}</span></div>
+          <h3 className="font-semibold pt-2">History</h3><p className="text-xs muted">A posted bill is never edited. Changes are made by credit note, and every print and share is recorded here.</p><HistoryList kind="invoices" id={drill.id} first={{ at: dmy(drill.date), by: drill.by, what: `Posted ${drill.no}` }} /></div>}
       </Drawer>
     </div>
   )

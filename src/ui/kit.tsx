@@ -218,7 +218,8 @@ export function Tape({ lines, title = 'The Tape', note }: { lines: TapeLine[]; t
 
 /* DataTable */
 export interface Col<T> { key: string; label: string; render?: (r: T) => ReactNode; get?: (r: T) => string | number; num?: boolean; off?: boolean; total?: boolean }
-export function DataTable<T extends { id: string }>({ cols, rows, onOpen, bulk, filter, pageSize = 12, name, empty, toolbar, dense }: {
+export function DataTable<T extends { id: string }>({ cols, rows, onOpen, bulk, filter, pageSize = 12, name, empty, toolbar, dense, hidden, onHidden }: {
+  hidden?: string[]; onHidden?: (h: string[]) => void
   cols: Col<T>[]; rows: T[]; onOpen?: (r: T) => void; bulk?: { label: string; icon?: string; run: (ids: string[]) => void }[]; filter?: { label: string; get: (r: T) => string; opts: string[] }; pageSize?: number; name: string; empty?: string; toolbar?: ReactNode; dense?: boolean
 }) {
   const [q, setQ] = useState('')
@@ -226,7 +227,8 @@ export function DataTable<T extends { id: string }>({ cols, rows, onOpen, bulk, 
   const [f, setF] = useState('All')
   const [page, setPage] = useState(0)
   const [sel, setSel] = useState<string[]>([])
-  const [hid, setHid] = useState<string[]>(cols.filter((c) => c.off).map((c) => c.key))
+  const [hid0, setHid0] = useState<string[]>(cols.filter((c) => c.off).map((c) => c.key))
+  const hid = hidden ?? hid0; const setHid = (h: string[]) => (onHidden ? onHidden(h) : setHid0(h))
   const [colMenu, setColMenu] = useState(false)
   const vis = cols.filter((c) => !hid.includes(c.key))
   const val = (c: Col<T>, r: T) => (c.get ? c.get(r) : ((r as Record<string, unknown>)[c.key] as string | number)) ?? ''

@@ -1,3 +1,4 @@
+import { useDraft, DraftNote } from '../ui/History'
 import { Fragment, useState } from 'react'
 import { useApp, set, toast, go, term } from '../lib/app'
 import { inr0, today, dmy } from '../lib/fmt'
@@ -90,6 +91,7 @@ export function Generic({ route }: { route: string }) {
   const [cancel, setCancel] = useState<Row | null>(null)
   const [v, setV] = useState<Record<string, string>>({})
   const [errs, setErrs] = useState<Record<string, string>>({})
+  const dr = useDraft(editId ? '' : 'g-' + route, v, setV, {})
   const save = (next: Row[]) => set((s) => ({ rows: { ...s.rows, [route]: next } }))
   const stamp = (r: Row, p: Patch): Patch => { const ch = Object.keys(p).filter((k) => k !== 'hist' && String(p[k] ?? '') !== String(r[k] ?? '')); if (!ch.length) return p; return { ...p, hist: JSON.stringify([...(r.hist ? JSON.parse(String(r.hist)) : []), { at: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), from: r.status, to: p.status ?? r.status, chg: ch.map((k) => [k, String(r[k] ?? ''), String(p[k] ?? '')]) }]) } }
   const patch = (id: string, p0: Patch) => { const cur = rows.find((r) => r.id === id); const p = cur ? stamp(cur, p0) : p0; save(rows.map((r) => (r.id === id ? { ...r, ...p } as Row : r))); setOpen((o) => (o && o.id === id ? ({ ...o, ...p } as Row) : o)) }
@@ -104,13 +106,13 @@ export function Generic({ route }: { route: string }) {
     const first = spec.flow?.[0]?.from ?? 'Active'
     const row: Row = { id: route + Date.now(), no: route.toUpperCase().slice(0, 3) + '/' + String(100 + n), date: today(), status: spec.defaults?.status ?? first, ...spec.defaults, ...Object.fromEntries(Object.entries(v).map(([k, x]) => [k, spec.fields?.find((f) => f.id === k)?.type === 'number' ? +x : x])) } as Row
     if (route === 'backup') row.at = 'Just now'
-    save([row, ...rows]); setAdding(false); setV({}); const note = spec.after?.(row); toast(note || `${spec.newLabel?.replace('New ', '') ?? 'Record'} created.`)
+    save([row, ...rows]); dr.clear(); setAdding(false); setV({}); const note = spec.after?.(row); toast(note || `${spec.newLabel?.replace('New ', '') ?? 'Record'} created.`)
   }
   const actions = open ? spec.flow?.filter((f) => f.from === open.status) ?? [] : []
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <PageHead title={term(c, spec.title)} sub={term(c, spec.sub)} crumbs={[spec.group, term(c, spec.title)]}>
-        {spec.newLabel && <Btn needs="C" kind="primary" icon="plus" onClick={() => { setAdding(true); setEditId(null); setErrs({}); setV({}) }}>{term(c, spec.newLabel)}</Btn>}
+        {spec.newLabel && <Btn needs="C" kind="primary" icon="plus" onClick={() => { setAdding(true); setEditId(null); setErrs({}) }}>{term(c, spec.newLabel)}</Btn>}
       </PageHead>
       <DataTable name="records" rows={rows} cols={cols} onOpen={setOpen} bulk={[...(can('E') && spec.flow?.[0] ? [{ label: `${spec.flow[0].label} selected`, icon: 'check', run: (ids: string[]) => { const f0 = spec.flow![0]; save(rows.map((r) => (ids.includes(r.id) && r.status === f0.from ? { ...r, status: f0.to } : r))); toast(`${ids.length} selected. Rows not in "${f0.from}" were left as they are.`) } }] : []), ...(spec.editable && can('D') ? [{ label: 'Remove selected', icon: 'trash', run: (ids: string[]) => { save(rows.filter((r) => !ids.includes(r.id))); toast(`${ids.length} removed.`) } }] : [])]} filter={spec.filterKey ? { label: 'State', get: (r) => String(r[spec.filterKey!]), opts: [...new Set(rows.map((r) => String(r[spec.filterKey!])))] } : undefined} />
       <Drawer open={!!open} onClose={() => setOpen(null)} title={String(open?.no ?? open?.name ?? open?.party ?? open?.wf ?? 'Details')}
@@ -120,8 +122,8 @@ export function Generic({ route }: { route: string }) {
           {actions.length === 0 && <p className="text-xs muted">No further steps from this state.</p>}
           <div><h3 className="text-xs font-medium muted mb-1">History</h3>{open.hist ? <ul className="text-[13px] space-y-0.5">{(JSON.parse(String(open.hist)) as { at: string; from: string; to: string; chg?: string[][] }[]).map((h, i) => <li key={i}><span className="muted">{h.at}</span>{h.from !== h.to && <> · {h.from} to {h.to}</>}{h.chg?.filter((x) => x[0] !== 'status').map((x) => <div key={x[0]} className="ml-3 text-xs">{x[0]}: <s className="muted">{x[1] || 'empty'}</s> → <b>{x[2] || 'empty'}</b></div>)}</li>)}</ul> : <p className="text-xs muted">No changes yet.</p>}</div></div>}
       </Drawer>
-      <Drawer open={adding} onClose={() => { setAdding(false); setEditId(null) }} title={editId ? 'Edit record' : term(c, spec.newLabel ?? 'New')} foot={<><Btn onClick={() => { setAdding(false); setEditId(null) }}>Cancel</Btn><Btn kind="primary" onClick={create}>{editId ? 'Save changes' : 'Create'}</Btn></>}>
-        <div className="space-y-3">{spec.fields?.map((f) => <Field key={f.id} label={term(c, f.label)} req={f.req} error={errs[f.id]}>{f.type === 'select' ? <select className="inp" value={v[f.id] ?? ''} onChange={(e) => setV({ ...v, [f.id]: e.target.value })}><option value="">Choose</option>{optsOf(f)?.map((o) => <option key={o}>{o}</option>)}</select> : <input className="inp" aria-invalid={!!errs[f.id]} type={f.type ?? 'text'} value={v[f.id] ?? ''} onChange={(e) => setV({ ...v, [f.id]: e.target.value })} />}</Field>)}</div>
+      <Drawer open={adding} onClose={() => { setAdding(false); setEditId(null) }} title={editId ? 'Edit record' : term(c, spec.newLabel ?? 'New')} foot={<><Btn onClick={() => { dr.clear(); setAdding(false); setEditId(null) }}>Cancel</Btn><Btn kind="primary" onClick={create}>{editId ? 'Save changes' : 'Create'}</Btn></>}>
+        <div className="space-y-3">{!editId && <DraftNote at={dr.at} restored={dr.restored} onDiscard={() => { dr.clear(); setV({}) }} />}{spec.fields?.map((f) => <Field key={f.id} label={term(c, f.label)} req={f.req} error={errs[f.id]}>{f.type === 'select' ? <select className="inp" value={v[f.id] ?? ''} onChange={(e) => setV({ ...v, [f.id]: e.target.value })}><option value="">Choose</option>{optsOf(f)?.map((o) => <option key={o}>{o}</option>)}</select> : <input className="inp" aria-invalid={!!errs[f.id]} type={f.type ?? 'text'} value={v[f.id] ?? ''} onChange={(e) => setV({ ...v, [f.id]: e.target.value })} />}</Field>)}</div>
       </Drawer>
       <Confirm open={!!cancel} title={`Cancel ${cancel?.no ?? 'record'}?`} reason danger action="Cancel it" body={<p>The record stays visible, struck through, with your reason in the audit trail. This cannot be undone, but a new record can replace it.</p>} onNo={() => setCancel(null)} onYes={() => { if (cancel) { patch(cancel.id, { status: 'Cancelled' }); toast(`${cancel.no} cancelled.`, 'warn') } setCancel(null) }} />
     </div>

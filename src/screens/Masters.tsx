@@ -3,6 +3,7 @@ import { useApp, set, toast, go } from '../lib/app'
 import type { FieldDef } from '../lib/config'
 import { GODOWNS, type Item, type Party } from '../lib/data'
 import { inr, inr0, dmy, today } from '../lib/fmt'
+import { HistoryList, logHist, diff, useDraft, DraftNote } from '../ui/History'
 import { Btn, DataTable, Drawer, Field, PageHead, Tabs, Bal, Status, Money, useT, Spark, Toggle } from '../ui/kit'
 import { Icon } from '../ui/icons'
 import { ctx, select } from '../shell/ctx'
@@ -16,10 +17,11 @@ export function FieldInput({ f, v, onChange, err }: { f: FieldDef; v: string; on
     </Field>
   )
 }
-export function EntityForm({ entity, init, onSave, onCancel, saveLabel }: { entity: string; init: Record<string, string>; onSave: (v: Record<string, string>) => void; onCancel: () => void; saveLabel: string }) {
+export function EntityForm({ entity, init, onSave, onCancel, saveLabel, draftKey }: { entity: string; init: Record<string, string>; onSave: (v: Record<string, string>) => void; onCancel: () => void; saveLabel: string; draftKey?: string }) {
   const fields = useApp((s) => s.draft.fields[entity] ?? []).filter((f) => f.visible)
   const [v, setV] = useState(init)
   const [errs, setErrs] = useState<Record<string, string>>({})
+  const dr = useDraft(draftKey ?? '', v, setV, init)
   const submit = () => {
     const e: Record<string, string> = {}
     fields.forEach((f) => { if (f.required && !(v[f.id] ?? '').trim()) e[f.id] = `${f.label} is required.` })
@@ -27,12 +29,14 @@ export function EntityForm({ entity, init, onSave, onCancel, saveLabel }: { enti
     if (v.hsn && !/^\d{4,8}$/.test(v.hsn)) e.hsn = 'HSN is 4 to 8 digits.'
     setErrs(e)
     if (Object.keys(e).length) return toast('Some fields need attention.', 'err')
+    if (draftKey) dr.clear()
     onSave(v)
   }
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit() }} className="space-y-3">
       {fields.map((f) => <FieldInput key={f.id} f={f} v={v[f.id] ?? ''} onChange={(x) => setV({ ...v, [f.id]: x })} err={errs[f.id]} />)}
-      <div className="flex justify-end gap-2 pt-2"><Btn onClick={onCancel}>Cancel</Btn><Btn kind="primary" type="submit">{saveLabel}</Btn></div>
+      {draftKey && <DraftNote at={dr.at} restored={dr.restored} onDiscard={() => { dr.clear(); setV(init) }} />}
+      <div className="flex justify-end gap-2 pt-2"><Btn onClick={() => { if (draftKey) dr.clear(); onCancel() }}>Cancel</Btn><Btn kind="primary" type="submit">{saveLabel}</Btn></div>
     </form>
   )
 }
@@ -53,8 +57,8 @@ export function ItemMaster() {
     Object.keys(v).forEach((k) => { if (!['name', 'hsn', 'gst', 'unit', 'mrp'].includes(k)) extra[k] = v[k] })
     if (id === 'new') {
       const it: Item = { id: 'i' + Date.now(), code: 'NEW-' + String(items.length + 1).padStart(4, '0'), barcode: '8901' + Date.now().toString().slice(-9), rate: base.mrp, cost: Math.round(base.mrp * 0.65), stock: { show: 0, god: 0, kkd: 0 }, reorder: 0, brand: '-', category: 'General', supplierId: 's1', ...base, extra }
-      set({ items: [it, ...items] }); toast(`${it.name} added with code ${it.code}.`)
-    } else { set({ items: items.map((i) => (i.id === id ? { ...i, ...base, extra: { ...i.extra, ...extra } } : i)) }); toast('Changes saved. A new revision is in the item history.') }
+      set({ items: [it, ...items] }); logHist('items', it.id, 'Created', [['Name', '', it.name], ['MRP', '', String(it.mrp)]]); toast(`${it.name} added with code ${it.code}.`)
+    } else { const before = items.find((i) => i.id === id); if (before) { const d = diff(val(before), v, { name: 'Name', hsn: 'HSN', gst: 'GST %', unit: 'Unit', mrp: 'MRP' }); if (d.length) logHist('items', id, 'Edited', d) } set({ items: items.map((i) => (i.id === id ? { ...i, ...base, extra: { ...i.extra, ...extra } } : i)) }); toast('Changes saved. A new revision is in the item history.') }
     setOpen(null)
   }
   return (
@@ -63,19 +67,20 @@ export function ItemMaster() {
         <Btn needs="C" kind="primary" icon="plus" onClick={() => { setOpen('new'); setTab('identity') }}>New {t('{item}').toLowerCase()}</Btn>
       </PageHead>
       <DataTable name={t('{items}').toLowerCase()} rows={items} onOpen={(r) => { setOpen(r.id); setTab('identity'); select('item', r.id) }} filter={{ label: 'Category', get: (r) => r.category, opts: [...new Set(items.map((i) => i.category))] }}
-        bulk={[{ label: 'Raise rates 5%', icon: 'trend', run: (ids) => { set({ items: items.map((i) => (ids.includes(i.id) ? { ...i, rate: Math.round(i.rate * 1.05) } : i)) }); toast(`Rates raised for ${ids.length} ${t('{items}').toLowerCase()}.`) } }]}
+        bulk={[{ label: 'Raise rates 5%', icon: 'trend', run: (ids) => { items.filter((i) => ids.includes(i.id)).forEach((i) => logHist('items', i.id, 'Rate raised 5% in bulk', [['Rate', String(i.rate), String(Math.round(i.rate * 1.05))]])); set({ items: items.map((i) => (ids.includes(i.id) ? { ...i, rate: Math.round(i.rate * 1.05) } : i)) }); toast(`Rates raised for ${ids.length} ${t('{items}').toLowerCase()}.`) } }]}
         cols={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'brand', label: 'Brand' }, { key: 'category', label: 'Category' }, { key: 'hsn', label: 'HSN', off: true }, { key: 'gst', label: 'GST %', num: true, render: (r) => r.gst + '%' }, { key: 'rate', label: 'Rate', num: true, render: (r) => inr0(r.rate) }, { key: 'stock', label: 'Stock', num: true, get: stockOf, render: (r) => `${stockOf(r)} ${r.unit}` }]} />
       <Drawer wide open={!!open} onClose={() => setOpen(null)} title={open === 'new' ? `New ${t('{item}').toLowerCase()}` : cur?.name ?? ''}>
-        {open === 'new' ? <EntityForm entity="item" init={{ gst: '5', unit: 'Pcs' }} onSave={(v) => save('new', v)} onCancel={() => setOpen(null)} saveLabel="Create item" />
+        {open === 'new' ? <EntityForm entity="item" draftKey="item-new" init={{ gst: '5', unit: 'Pcs' }} onSave={(v) => save('new', v)} onCancel={() => setOpen(null)} saveLabel="Create item" />
           : cur && (
             <div className="-m-5">
-              <Tabs value={tab} onChange={setTab} tabs={[{ id: 'identity', label: 'Identity' }, { id: 'units', label: 'Units' }, { id: 'variants', label: 'Variants' }, { id: 'stock', label: 'Stock' }, ...(pack === 'textile' ? [{ id: 'rolls', label: 'Rolls' }] : [])]} />
+              <Tabs value={tab} onChange={setTab} tabs={[{ id: 'identity', label: 'Identity' }, { id: 'units', label: 'Units' }, { id: 'variants', label: 'Variants' }, { id: 'stock', label: 'Stock' }, { id: 'history', label: 'History' }, ...(pack === 'textile' ? [{ id: 'rolls', label: 'Rolls' }] : [])]} />
               <div className="p-5">
                 {tab === 'identity' && <EntityForm entity="item" init={val(cur)} onSave={(v) => save(cur.id, v)} onCancel={() => setOpen(null)} saveLabel="Save changes" />}
                 {tab === 'units' && <Units it={cur} />}
                 {tab === 'variants' && <Matrix it={cur} />}
                 {tab === 'stock' && <div className="space-y-2">{GODOWNS.map((g) => <div key={g.id} className="flex justify-between border-b border-rule py-1.5"><span>{g.name}</span><span className="num">{cur.stock[g.id]} {cur.unit}</span></div>)}<div className="flex justify-between font-medium py-1"><span>Total</span><span className="num">{stockOf(cur)} {cur.unit}</span></div><p className="text-xs muted">Barcode {cur.barcode}. Reorder level {cur.reorder}.</p></div>}
                 {tab === 'rolls' && <Rolls it={cur} />}
+                {tab === 'history' && <HistoryList kind="items" id={cur.id} first={{ at: 'Before history was kept', by: 'Opening data', what: `Opening record, rate ${cur.rate}` }} />}
               </div>
             </div>
           )}
@@ -171,9 +176,9 @@ export function Parties() {
       </div>
       {p && <Party360 p={p} tab={tab} setTab={setTab} />}
       <Drawer open={adding} onClose={() => setAdding(false)} title="New party">
-        <EntityForm entity="party" init={{}} saveLabel="Create party" onCancel={() => setAdding(false)} onSave={(v) => {
+        <EntityForm entity="party" draftKey="party-new" init={{}} saveLabel="Create party" onCancel={() => setAdding(false)} onSave={(v) => {
           const np: Party = { id: 'c' + Date.now(), name: v.name, kind: 'customer', city: v.city ?? '', phone: v.phone ?? '', gstin: v.gstin ?? '', balance: 0, limit: +(v.limit ?? 0), risk: 'low', lastPay: '', overdueDays: 0, consent: v.consent === 'Yes', extra: v }
-          set({ parties: [...s.parties, np] }); setAdding(false); open(np.id); toast(`${np.name} created. Party 360 is open.`)
+          set({ parties: [...s.parties, np] }); logHist('parties', np.id, 'Created', [['Name', '', np.name]]); setAdding(false); open(np.id); toast(`${np.name} created. Party 360 is open.`)
         }} />
       </Drawer>
     </div>
@@ -200,13 +205,14 @@ function Party360({ p, tab, setTab }: { p: Party; tab: string; setTab: (t: strin
           <div className="text-xs"><span className="muted">Risk </span><span className="capitalize font-medium">{p.risk}</span>{p.risk === 'high' && <span>, {p.overdueDays} days overdue</span>}</div>
           <div className="text-xs"><span className="muted">WhatsApp </span>{p.consent ? 'Opted in' : 'No consent'}</div>
           <span className="flex-1" />
-          <Btn onClick={() => { const amt = Math.min(Math.max(0, p.balance), 10000); if (!amt) return toast('Nothing is owed.', 'info'); set((x) => ({ parties: x.parties.map((y) => (y.id === p.id ? { ...y, balance: y.balance - amt, overdueDays: 0 } : y)), vouchers: [{ id: 'v' + Date.now(), no: 'RV-QUICK', type: 'Receipt', date: today(), narration: 'Quick receipt from Party 360', status: 'posted', by: 'Rekha (accountant)', lines: [{ ledger: 'Cash in hand', dr: amt, cr: 0 }, { ledger: p.name, dr: 0, cr: amt }] }, ...x.vouchers] })); toast(`Receipt of ${inr0(amt)} posted. Balance updated.`) }}>Receive payment</Btn>
+          <Btn onClick={() => { const amt = Math.min(Math.max(0, p.balance), 10000); if (!amt) return toast('Nothing is owed.', 'info'); logHist('parties', p.id, 'Quick receipt posted', [['Balance', String(p.balance), String(p.balance - amt)]]); set((x) => ({ parties: x.parties.map((y) => (y.id === p.id ? { ...y, balance: y.balance - amt, overdueDays: 0 } : y)), vouchers: [{ id: 'v' + Date.now(), no: 'RV-QUICK', type: 'Receipt', date: today(), narration: 'Quick receipt from Party 360', status: 'posted', by: 'Rekha (accountant)', lines: [{ ledger: 'Cash in hand', dr: amt, cr: 0 }, { ledger: p.name, dr: 0, cr: amt }] }, ...x.vouchers] })); toast(`Receipt of ${inr0(amt)} posted. Balance updated.`) }}>Receive payment</Btn>
           <Btn kind="primary" onClick={() => go('billing')}>New bill</Btn>
         </div>
       </div>
-      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'timeline', label: 'Timeline', badge: events.length }, { id: 'bills', label: 'Outstanding bills' }, { id: 'bought', label: `${t('{items}')} bought` }, { id: 'notes', label: 'Notes' }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'timeline', label: 'Timeline', badge: events.length }, { id: 'bills', label: 'Outstanding bills' }, { id: 'bought', label: `${t('{items}')} bought` }, { id: 'notes', label: 'Notes' }, { id: 'history', label: 'Change history' }]} />
       <div className="flex-1 scroll p-5">
         {tab === 'timeline' && <ol className="space-y-0 max-w-2xl">{events.length === 0 && <li className="muted text-[13px]">No activity yet. Create a bill or log a call.</li>}{events.map((e, i) => <li key={i} className="flex gap-3 pb-3"><span className="text-xs muted w-16 pt-0.5">{dmy(e.d)}</span><span className={`size-2 rounded-full mt-1.5 ${e.tone === 'ok' ? 'bg-mehndi' : e.tone === 'warn' ? 'bg-haldi' : 'bg-neel'}`} /><div className="text-[13px]"><span className="chip mr-2">{e.k}</span>{e.text}</div></li>)}</ol>}
+        {tab === 'history' && <HistoryList kind="parties" id={p.id} />}
         {tab === 'bills' && <table className="tbl panel"><thead><tr><th>Bill</th><th>Date</th><th className="text-right">Total</th><th className="text-right">Due</th><th /></tr></thead><tbody>{inv.filter((i) => i.total > i.paid && i.status === 'posted').map((i) => <tr key={i.id}><td className="num text-left">{i.no}</td><td>{dmy(i.date)}</td><td className="num">{inr0(i.total)}</td><td className="num">{inr0(i.total - i.paid)}</td><td><Status s={Date.now() - new Date(i.date).getTime() > 6 * 864e5 ? 'Overdue' : 'Open'} /></td></tr>)}</tbody></table>}
         {tab === 'bought' && <table className="tbl panel"><tbody>{[...new Set(inv.flatMap((i) => i.lines.map((l) => l.name)))].map((n) => <tr key={n}><td>{n}</td></tr>)}</tbody></table>}
         {tab === 'notes' && <div className="max-w-xl space-y-2"><div className="flex gap-2"><input className="inp" aria-label="Add note" placeholder="Add a note" value={note} onChange={(e) => setNote(e.target.value)} /><Btn kind="primary" disabled={!note} onClick={() => { setNotes([note, ...notes]); setNote('') }}>Add</Btn></div>{notes.map((n, i) => <div key={i} className="panel p-2 text-[13px]">{n}</div>)}</div>}

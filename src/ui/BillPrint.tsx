@@ -1,3 +1,4 @@
+import { logHist } from './History'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createStore } from '../lib/store'
@@ -146,8 +147,8 @@ export function PrintDialog() {
     <>
       <Modal open onClose={() => printStore.set({ inv: null, reprint: false })} title={`${inv.no} · ${reprint ? 'Reprint' : 'Print'}`}
         foot={<><Btn onClick={() => printStore.set({ inv: null, reprint: false })}>Done</Btn>
-          {phone && <Btn icon="chat" onClick={() => window.open(`https://wa.me/91${phone.slice(-10)}?text=${encodeURIComponent(`${inv.no} for ${inr(inv.total)} from ${b.display}. Thank you.`)}`, '_blank', 'noopener')}>Share on WhatsApp</Btn>}
-          <Btn kind="primary" icon="printer" onClick={() => { const t = document.title; document.title = inv.no.replace(/\//g, '-'); document.body.dataset.printfmt = fmt; window.print(); document.title = t }}>Print {dup ? 'duplicate' : ''}</Btn></>}>
+          {phone && <Btn icon="chat" onClick={() => { logHist('invoices', inv.id, 'Shared on WhatsApp'); window.open(`https://wa.me/91${phone.slice(-10)}?text=${encodeURIComponent(`${inv.no} for ${inr(inv.total)} from ${b.display}. Thank you.`)}`, '_blank', 'noopener') }}>Share on WhatsApp</Btn>}
+          <Btn kind="primary" icon="printer" onClick={() => { const t = document.title; document.title = inv.no.replace(/\//g, '-'); document.body.dataset.printfmt = fmt; logHist('invoices', inv.id, dup ? 'Duplicate printed' : 'Printed', [['Paper', '', fmt]]); window.print(); document.title = t }}>Print {dup ? 'duplicate' : ''}</Btn></>}>
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <Seg label="Paper" value={fmt} onChange={setFmt} opts={[{ id: 'thermal', label: 'Receipt 80 mm' }, { id: 'a5', label: 'A5' }, { id: 'a4', label: 'A4 invoice' }]} />
