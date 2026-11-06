@@ -3,6 +3,22 @@ import { useApp, runChecks, publish, rollback, safeMode, pendingChanges, discard
 import { Btn, Modal, PageHead, Confirm } from '../ui/kit'
 import { Icon } from '../ui/icons'
 
+type J = unknown
+function flat(o: J, pre = '', out: Record<string, string> = {}): Record<string, string> {
+  if (o && typeof o === 'object') { const e = Object.entries(o as Record<string, J>); if (!e.length) out[pre] = Array.isArray(o) ? '[]' : '{}'; e.forEach(([k, v]) => flat(v, pre ? `${pre}${Array.isArray(o) ? `[${k}]` : '.' + k}` : k, out)) } else out[pre] = String(o)
+  return out
+}
+function DraftDiff() {
+  const s = useApp((x) => x)
+  const a = flat(s.published); const b = flat(s.draft)
+  const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => a[k] !== b[k]).sort()
+  if (!keys.length) return null
+  return (
+    <section className="panel p-4 space-y-2" aria-label="Draft changes in detail"><h2 className="font-semibold">Changes in detail</h2>
+      <ul className="text-xs space-y-1 max-h-64 overflow-auto">{keys.slice(0, 60).map((k) => <li key={k}><span className="font-mono muted">{k}</span>: <s className="muted">{a[k] ?? 'not set'}</s> → <b>{b[k] ?? 'removed'}</b></li>)}</ul>
+      {keys.length > 60 && <p className="text-xs muted">and {keys.length - 60} more</p>}</section>
+  )
+}
 function Checks() {
   const c = useApp((s) => s.draft)
   const checks = runChecks(c)
@@ -47,6 +63,7 @@ export function ChangeTape() {
             <div className="flex flex-wrap gap-1 min-h-6">{pend.length ? pend.map((p) => <span key={p} className="chip border-haldi">{p}</span>) : <span className="text-[13px] muted">No unpublished changes.</span>}</div>
             <input aria-label="Note" className="inp" placeholder="Note, for example: Onam theme" value={note} onChange={(e) => setNote(e.target.value)} />
             <div className="flex gap-2"><Btn onClick={discardDraft} disabled={!pend.length}>Discard</Btn><Btn kind="primary" className="flex-1 justify-center" disabled={!pend.length || blocked} onClick={() => { if (publish(note)) setNote('') }}>{blocked ? 'Blocked by checks' : `Publish v${s.version + 1}`}</Btn></div></section>
+          <DraftDiff />
         </div>
         <section className="panel" aria-label="Version history">
           <h2 className="px-4 py-3 font-semibold border-b border-rule">Version history</h2>

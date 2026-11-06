@@ -1,3 +1,4 @@
+import { useDraft, DraftNote } from '../ui/History'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp, set, toast, nextNo, bumpNo, go } from '../lib/app'
 import { today, inr, inr0, dmy } from '../lib/fmt'
@@ -25,6 +26,7 @@ export function VoucherEntry() {
   const [narr, setNarr] = useState('')
   const [pdc, setPdc] = useState('')
   const [errs, setErrs] = useState<Record<string, string>>({})
+  const draft = useDraft('voucher', { j: JSON.stringify({ type, lines, date, narr, pdc }) }, (x) => { const o = JSON.parse(x.j); setType(o.type); setLines(o.lines); setDate(o.date); setNarr(o.narr); setPdc(o.pdc) }, { j: JSON.stringify({ type: 'Payment', lines: preset('Payment'), date: today(), narr: '', pdc: '' }) })
   const opts = useLedgerOptions()
   const vouchers = useApp((s) => s.vouchers)
   const no = useApp((s) => { const d = DOCS[type]; const n = s.published.numbering.find((x) => x.doc === d); return n ? n.prefix + String(n.start).padStart(n.padding, '0') : type.slice(0, 2).toUpperCase() + '-' + String(vouchers.length + 40).padStart(4, '0') })
@@ -60,7 +62,7 @@ export function VoucherEntry() {
     }))
     if (DOCS[type]) bumpNo(DOCS[type])
     toast(`${no} posted. ${lines.length} entries added to the day book.`)
-    setLines(preset(type)); setNarr(''); setPdc('')
+    draft.clear(); setLines(preset(type)); setNarr(''); setPdc('')
   }
   useEffect(() => {
     const h = (ev: KeyboardEvent) => {
@@ -75,6 +77,7 @@ export function VoucherEntry() {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 scroll">
+        <div className="px-5 pt-2"><DraftNote at={draft.at} restored={draft.restored} onDiscard={() => { draft.clear(); setType('Payment'); setLines(preset('Payment')); setNarr(''); setPdc('') }} /></div>
         <PageHead title={`${type} voucher`} sub="One form for every voucher type. Switch with the function keys. Post is enabled when debit equals credit." crumbs={['Books', 'Voucher entry']}>
           <Btn needs="C" kind="primary" icon="save" disabled={!balanced} onClick={post}>Post voucher <span className="kbd text-ink">Ctrl+S</span></Btn>
         </PageHead>
