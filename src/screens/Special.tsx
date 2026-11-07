@@ -10,12 +10,29 @@ import { ctx } from '../shell/ctx'
 export function Approvals() {
   const s = useApp((x) => x)
   const [f, setF] = useState('pending')
+  const board = useApp((x) => x.draft.layouts.approvals) === 'board'
   const list = s.approvals.filter((a) => f === 'all' || a.status === f)
   return (
     <div className="flex-1 scroll">
       <PageHead title="Approvals" sub="Everything waiting on a person. Chains come from Admin Studio. Answers can also come from WhatsApp (simulated)." crumbs={['Home', 'Approvals']}>
         <Seg label="Filter" value={f} onChange={setF} opts={[{ id: 'pending', label: `Pending (${s.approvals.filter((a) => a.status === 'pending').length})` }, { id: 'approved', label: 'Approved' }, { id: 'rejected', label: 'Rejected' }, { id: 'all', label: 'All' }]} />
       </PageHead>
+      {board ? (
+        <div className="px-5 pb-6 grid gap-3 md:grid-cols-3 items-start">
+          {(['pending', 'approved', 'rejected'] as const).map((col) => (
+            <section key={col} aria-label={col} className="panel p-2 space-y-2">
+              <h2 className="text-xs font-medium muted capitalize px-1">{col} ({s.approvals.filter((a) => a.status === col).length})</h2>
+              {s.approvals.filter((a) => a.status === col).map((a) => (
+                <article key={a.id} className="border border-rule rounded p-3 bg-sheet">
+                  <span className="chip">{a.kind}</span>
+                  <h3 className="font-medium text-[13px] mt-1">{a.title}</h3>
+                  <div className="text-xs muted mt-0.5">{a.by} · {inr0(a.amount)} · due {a.due}</div>
+                  {col === 'pending' && <div className="flex gap-2 mt-2"><Btn needs="A" onClick={() => decide(a.id, 'rejected')}>Reject</Btn><Btn needs="A" kind="primary" onClick={() => decide(a.id, 'approved')}>Approve</Btn></div>}
+                </article>))}
+              {s.approvals.filter((a) => a.status === col).length === 0 && <div className="text-xs muted px-1 py-3">None</div>}
+            </section>))}
+        </div>
+      ) : (
       <div className="px-5 pb-6 max-w-4xl space-y-2">
         {list.length === 0 && <div className="panel"><Empty text="Nothing here. New requests appear when a cashier or accountant goes past a limit." /></div>}
         {list.map((a) => {
@@ -33,6 +50,7 @@ export function Approvals() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

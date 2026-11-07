@@ -28,10 +28,10 @@ export interface Config {
   pack: PackId
   theme: { preset: string; accent: string; radius: number; density: 'comfort' | 'compact' | 'ledger'; custom: boolean }
   drcr: 'accounting' | 'everywhere' | 'letters'
-  layouts: { books: 'ledger' | 'receipt'; cashier: 'counter' | 'tile'; party: 'table' | 'cards'; stock: 'table' | 'cards'; day: 'sheet' | 'split' }
+  layouts: { books: 'ledger' | 'receipt'; cashier: 'counter' | 'tile'; party: 'table' | 'cards'; stock: 'table' | 'cards'; day: 'sheet' | 'split'; approvals: 'list' | 'board'; items: 'table' | 'cards' }
   terms: Record<string, string>
   lang: Lang
-  company: { legal: string; display: string; tagline: string; gstin: string }
+  company: { legal: string; display: string; tagline: string; gstin: string; logo?: string }
   branches: Branch[]
   modules: ModuleDef[]
   menu: MenuGroup[]
@@ -41,6 +41,7 @@ export interface Config {
   workflows: Workflow[]
   approvals: Approval[]
   fields: Record<string, FieldDef[]>
+  termsL?: { ml?: Record<string, string>; hi?: Record<string, string> }
 }
 
 export interface ThemePreset { id: string; name: string; note: string; day: { accent: string; cotton: string; sheet: string; ink: string; rule: string }; night: { accent: string; cotton: string; sheet: string; ink: string; rule: string } }
@@ -121,7 +122,7 @@ export function defaultConfig(): Config {
     pack: 'textile',
     theme: { preset: 'neel', accent: '#23307A', radius: 4, density: 'compact', custom: false },
     drcr: 'accounting',
-    layouts: { books: 'ledger', cashier: 'counter', party: 'table', stock: 'table', day: 'sheet' },
+    layouts: { books: 'ledger', cashier: 'counter', party: 'table', stock: 'table', day: 'sheet', approvals: 'list', items: 'table' },
     terms: { ...TERM_BASE },
     lang: 'en',
     company: { legal: 'Malabar Textiles and Home Private Limited', display: 'Malabar Home', tagline: 'Weaves, linens and everyday wear since 1987', gstin: '32AABCM4417K1ZP' },
@@ -183,6 +184,38 @@ export function defaultConfig(): Config {
 export const GUARDRAILS = ['Field masking by role', 'Audit trail', 'Period locks', 'Posting immutability (reversals only)', 'Signed tax rule packs']
 export const LAYERS = ['Platform default', 'Industry pack', 'Tenant', 'Company', 'Branch', 'Role', 'User']
 
+
+/** Malayalam and Hindi for the words a pack or client may use for a platform term. Keyed by the English word.
+ *  Plain, common words. A native speaker should review before a client sees them. */
+export const TRANS: Record<string, { ml: string; hi: string }> = {
+  Customer: { ml: 'ഉപഭോക്താവ്', hi: 'ग्राहक' }, Customers: { ml: 'ഉപഭോക്താക്കൾ', hi: 'ग्राहक' },
+  Supplier: { ml: 'വിതരണക്കാരൻ', hi: 'आपूर्तिकर्ता' }, Suppliers: { ml: 'വിതരണക്കാർ', hi: 'आपूर्तिकर्ता' },
+  Godown: { ml: 'ഗോഡൗൺ', hi: 'गोदाम' }, Godowns: { ml: 'ഗോഡൗണുകൾ', hi: 'गोदाम' },
+  Item: { ml: 'ഇനം', hi: 'वस्तु' }, Items: { ml: 'ഇനങ്ങൾ', hi: 'वस्तुएँ' },
+  Invoice: { ml: 'ഇൻവോയ്സ്', hi: 'चालान' }, Bill: { ml: 'ബിൽ', hi: 'बिल' }, Salesperson: { ml: 'വിൽപ്പനക്കാരൻ', hi: 'विक्रेता' },
+  Patient: { ml: 'രോഗി', hi: 'मरीज़' }, Patients: { ml: 'രോഗികൾ', hi: 'मरीज़' },
+  Distributor: { ml: 'വിതരണക്കാരൻ', hi: 'वितरक' }, Distributors: { ml: 'വിതരണക്കാർ', hi: 'वितरक' },
+  'Store room': { ml: 'സ്റ്റോർ റൂം', hi: 'भंडार कक्ष' }, 'Store rooms': { ml: 'സ്റ്റോർ റൂമുകൾ', hi: 'भंडार कक्ष' },
+  Medicine: { ml: 'മരുന്ന്', hi: 'दवा' }, Medicines: { ml: 'മരുന്നുകൾ', hi: 'दवाइयाँ' },
+  Guest: { ml: 'അതിഥി', hi: 'अतिथि' }, Guests: { ml: 'അതിഥികൾ', hi: 'अतिथि' },
+  'Menu item': { ml: 'മെനു ഇനം', hi: 'मेनू आइटम' }, 'Menu items': { ml: 'മെനു ഇനങ്ങൾ', hi: 'मेनू आइटम' },
+  'Kitchen store': { ml: 'അടുക്കള സ്റ്റോർ', hi: 'रसोई भंडार' }, 'Kitchen stores': { ml: 'അടുക്കള സ്റ്റോറുകൾ', hi: 'रसोई भंडार' },
+  'Tax invoice': { ml: 'ടാക്സ് ഇൻവോയ്സ്', hi: 'कर चालान' },
+  Student: { ml: 'വിദ്യാർത്ഥി', hi: 'छात्र' }, Students: { ml: 'വിദ്യാർത്ഥികൾ', hi: 'छात्र' },
+  'Fee head': { ml: 'ഫീസ് ഇനം', hi: 'शुल्क मद' }, 'Fee heads': { ml: 'ഫീസ് ഇനങ്ങൾ', hi: 'शुल्क मद' },
+  'Fee receipt': { ml: 'ഫീസ് രസീത്', hi: 'शुल्क रसीद' }, Vendor: { ml: 'വെണ്ടർ', hi: 'विक्रेता' }, Vendors: { ml: 'വെണ്ടർമാർ', hi: 'विक्रेता' },
+  Product: { ml: 'ഉൽപ്പന്നം', hi: 'उत्पाद' }, Products: { ml: 'ഉൽപ്പന്നങ്ങൾ', hi: 'उत्पाद' },
+  Warehouse: { ml: 'വെയർഹൗസ്', hi: 'गोदाम' }, Warehouses: { ml: 'വെയർഹൗസുകൾ', hi: 'गोदाम' }, 'Counter staff': { ml: 'കൗണ്ടർ സ്റ്റാഫ്', hi: 'काउंटर स्टाफ' },
+  'Back store': { ml: 'പിൻ സ്റ്റോർ', hi: 'पिछला भंडार' }, 'Back stores': { ml: 'പിൻ സ്റ്റോറുകൾ', hi: 'पिछला भंडार' },
+  Member: { ml: 'അംഗം', hi: 'सदस्य' }, Members: { ml: 'അംഗങ്ങൾ', hi: 'सदस्य' }, Plan: { ml: 'പ്ലാൻ', hi: 'योजना' }, Plans: { ml: 'പ്ലാനുകൾ', hi: 'योजनाएँ' },
+  'Membership bill': { ml: 'അംഗത്വ ബിൽ', hi: 'सदस्यता बिल' }, Trainer: { ml: 'പരിശീലകൻ', hi: 'प्रशिक्षक' }, Store: { ml: 'സ്റ്റോർ', hi: 'भंडार' }, Stores: { ml: 'സ്റ്റോറുകൾ', hi: 'भंडार' },
+}
+/** The word to show for a term key in the client's language: their own entry, else our dictionary, else English. */
+export function termIn(cfg: Config, k: string, lang = cfg.lang): string {
+  const en = cfg.terms[k] ?? TERM_BASE[k] ?? k
+  if (lang === 'en') return en
+  return cfg.termsL?.[lang]?.[k] || TRANS[en]?.[lang] || en
+}
 export function term(cfg: Config, s: string): string {
-  return s.replace(/\{(\w+)\}/g, (_, k, off) => { const v = cfg.terms[k] ?? TERM_BASE[k] ?? k; return off === 0 ? v : v.charAt(0).toLowerCase() + v.slice(1) })
+  return s.replace(/\{(\w+)\}/g, (_, k, off) => { const v = termIn(cfg, k); return off === 0 ? v : v.charAt(0).toLowerCase() + v.slice(1) })
 }

@@ -15,7 +15,7 @@ export function SignIn() {
     <div className="h-full grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" style={{ background: 'var(--cotton)' }}>
       <section className="hidden md:flex flex-col justify-between p-10" style={{ background: v.accent, color: v.on }} aria-label="Shop">
         <div className="text-sm opacity-85">{c.branches[0].legal}</div>
-        <div><h1 className="text-4xl font-semibold leading-tight">{c.company.display}</h1><p className="mt-2 text-lg opacity-85 max-w-sm">{c.company.tagline}</p></div>
+        <div>{c.company.logo && <img src={c.company.logo} alt="" className="h-14 mb-3 object-contain bg-white rounded p-1" />}<h1 className="text-4xl font-semibold leading-tight">{c.company.display}</h1><p className="mt-2 text-lg opacity-85 max-w-sm">{c.company.tagline}</p></div>
         <div className="text-xs opacity-80 max-w-sm">Runs on this computer first. Bills, stock and books keep working without internet and sync when it returns.</div>
       </section>
       <main className="flex items-center justify-center p-6">

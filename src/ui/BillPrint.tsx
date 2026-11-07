@@ -43,11 +43,13 @@ export function taxSplit(inv: Invoice, party?: Party, home = '32') {
 }
 
 export function BillDoc({ inv, b, party, fmt, dup, opts }: { inv: Invoice; b: Branch; party?: Party; fmt: Fmt; dup: boolean; opts: { tagline: boolean; words: boolean; terms: boolean } }) {
+  const logo = useApp((s) => s.published.company.logo)
   const x = taxSplit(inv, party)
   const walk = !party || party.id === 'c0'
   if (fmt === 'thermal') {
     return (
       <div className="bill-doc thermal" style={{ width: '72mm', fontSize: 11, color: '#111', background: '#fff', padding: '3mm', fontFamily: 'var(--font-num), monospace' }}>
+        {logo && <img src={logo} alt="" style={{ display: 'block', margin: '0 auto 2px', maxHeight: '14mm', maxWidth: '40mm', filter: 'grayscale(1) contrast(1.3)' }} />}
         <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 14 }}>{b.display}</div>
         {opts.tagline && <div style={{ textAlign: 'center' }}>{b.tagline}, {b.city}</div>}
         <div style={{ textAlign: 'center' }}>GSTIN {b.gstin}</div>
@@ -83,6 +85,7 @@ export function BillDoc({ inv, b, party, fmt, dup, opts }: { inv: Invoice; b: Br
       {dup && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 72, fontWeight: 700, color: 'rgba(0,0,0,.07)', transform: 'rotate(-24deg)', pointerEvents: 'none' }}>DUPLICATE</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
         <div>
+          {logo && <img src={logo} alt="" style={{ maxHeight: '16mm', maxWidth: '50mm', marginBottom: 4 }} />}
           <div style={{ fontSize: 18, fontWeight: 700 }}>{b.legal}</div>
           {opts.tagline && <div>{b.tagline}, {b.city}, Kerala</div>}
           <div>GSTIN {b.gstin} · State code 32</div>

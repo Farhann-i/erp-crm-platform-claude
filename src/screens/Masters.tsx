@@ -47,6 +47,7 @@ export function ItemMaster() {
   const items = useApp((s) => s.items)
   const t = useT()
   const pack = useApp((s) => s.draft.pack)
+  const iLayout = useApp((s) => s.draft.layouts.items)
   const [open, setOpen] = useState<string | null>(null)
   const [tab, setTab] = useState('identity')
   const cur = items.find((i) => i.id === open)
@@ -66,9 +67,21 @@ export function ItemMaster() {
       <PageHead title={`${t('{item}')} master`} sub="Identity, units, tax, barcodes and stock in one record. Fields follow your Admin Studio form design." crumbs={['Stock', `${t('{item}')} master`]}>
         <Btn needs="C" kind="primary" icon="plus" onClick={() => { setOpen('new'); setTab('identity') }}>New {t('{item}').toLowerCase()}</Btn>
       </PageHead>
+      {iLayout === 'cards' ? (
+        <div className="flex-1 scroll px-5 pb-6 grid gap-3 content-start" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))' }}>
+          {items.map((r) => (
+            <button key={r.id} onClick={() => { setOpen(r.id); setTab('identity'); select('item', r.id) }} className="panel p-3 text-left hover:border-neel">
+              <div className="text-xs muted">{r.code} · {r.category}</div>
+              <div className="font-medium text-[14px] mt-0.5">{r.name}</div>
+              <div className="flex justify-between mt-2 text-[13px]"><span>{inr0(r.rate)}</span><span className={stockOf(r) < r.reorder ? 'text-red-700' : 'muted'}>{stockOf(r)} {r.unit}</span></div>
+              <div className="text-xs muted mt-1">GST {r.gst}%{stockOf(r) < r.reorder ? ' · below reorder' : ''}</div>
+            </button>))}
+        </div>
+      ) : (
       <DataTable name={t('{items}').toLowerCase()} rows={items} onOpen={(r) => { setOpen(r.id); setTab('identity'); select('item', r.id) }} filter={{ label: 'Category', get: (r) => r.category, opts: [...new Set(items.map((i) => i.category))] }}
         bulk={[{ label: 'Raise rates 5%', icon: 'trend', run: (ids) => { items.filter((i) => ids.includes(i.id)).forEach((i) => logHist('items', i.id, 'Rate raised 5% in bulk', [['Rate', String(i.rate), String(Math.round(i.rate * 1.05))]])); set({ items: items.map((i) => (ids.includes(i.id) ? { ...i, rate: Math.round(i.rate * 1.05) } : i)) }); toast(`Rates raised for ${ids.length} ${t('{items}').toLowerCase()}.`) } }]}
         cols={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'brand', label: 'Brand' }, { key: 'category', label: 'Category' }, { key: 'hsn', label: 'HSN', off: true }, { key: 'gst', label: 'GST %', num: true, render: (r) => r.gst + '%' }, { key: 'rate', label: 'Rate', num: true, render: (r) => inr0(r.rate) }, { key: 'stock', label: 'Stock', num: true, get: stockOf, render: (r) => `${stockOf(r)} ${r.unit}` }]} />
+      )}
       <Drawer wide open={!!open} onClose={() => setOpen(null)} title={open === 'new' ? `New ${t('{item}').toLowerCase()}` : cur?.name ?? ''}>
         {open === 'new' ? <EntityForm entity="item" draftKey="item-new" init={{ gst: '5', unit: 'Pcs' }} onSave={(v) => save('new', v)} onCancel={() => setOpen(null)} saveLabel="Create item" />
           : cur && (

@@ -7,7 +7,7 @@ export function PrintPreview({ c, b, opts }: { c: Config; b: Branch; opts?: { du
     <div className="flex gap-6 flex-wrap items-start">
       <figure className="m-0">
         <div className="w-[230px] bg-white text-[#1c2340] border border-rule p-3 text-[11px] font-[family-name:var(--font-num)] shadow-sm" style={{ color: '#1c2340' }}>
-          <div className="text-center font-semibold text-[13px]">{b.display}</div>
+          {c.company.logo && <img src={c.company.logo} alt="" className="mx-auto max-h-8 grayscale" />}<div className="text-center font-semibold text-[13px]">{b.display}</div>
           {o.tagline && <div className="text-center text-[10px]">{b.tagline}</div>}
           {o.gstin && <div className="text-center text-[10px]">GSTIN {b.gstin}</div>}
           <div className="border-t border-dashed border-gray-400 my-2" />
@@ -22,7 +22,7 @@ export function PrintPreview({ c, b, opts }: { c: Config; b: Branch; opts?: { du
       </figure>
       <figure className="m-0">
         <div className="w-[300px] h-[210px] bg-white border border-rule p-3 text-[10px] relative shadow-sm overflow-hidden" style={{ color: '#1c2340' }}>
-          <div className="flex justify-between items-start"><div><div className="font-semibold text-[12px]">{b.legal}</div><div>{b.tagline}, {b.city}</div>{o.gstin && <div>GSTIN {b.gstin}</div>}</div><div className="text-right"><div className="font-semibold text-[12px]">TAX INVOICE</div><div>INV/26-27/01043</div></div></div>
+          <div className="flex justify-between items-start"><div>{c.company.logo && <img src={c.company.logo} alt="" className="max-h-8 mb-1" />}<div className="font-semibold text-[12px]">{b.legal}</div><div>{b.tagline}, {b.city}</div>{o.gstin && <div>GSTIN {b.gstin}</div>}</div><div className="text-right"><div className="font-semibold text-[12px]">TAX INVOICE</div><div>INV/26-27/01043</div></div></div>
           <div className="border-t border-gray-300 my-2" />
           <table className="w-full"><thead><tr className="text-left"><th>Item</th><th>HSN</th><th className="text-right">Qty</th><th className="text-right">Amount</th></tr></thead><tbody><tr><td>Linen shirt</td><td>6205</td><td className="text-right">1</td><td className="text-right">{inr(1749)}</td></tr><tr><td>Cotton kurta</td><td>6104</td><td className="text-right">2</td><td className="text-right">{inr(2398)}</td></tr></tbody></table>
           <div className="absolute bottom-2 right-3 text-right font-semibold text-[11px]">Total {inr(4147)}</div>

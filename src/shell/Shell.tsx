@@ -86,7 +86,7 @@ export default function Shell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-[70] focus:bg-sheet focus:p-2">Skip to content</a>
       <header className="h-11 shrink-0 bg-neel text-onneel flex items-center gap-3 px-3" style={{ background: 'var(--neel)', color: 'var(--on-neel)' }}>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="size-6 rounded grid place-items-center text-xs font-semibold shrink-0" style={{ background: 'color-mix(in srgb, var(--on-neel) 18%, transparent)' }} aria-hidden>{branch.display.slice(0, 1)}</div>
+          {c.company.logo ? <img src={c.company.logo} alt="" className="size-6 rounded object-contain bg-white shrink-0" /> : <div className="size-6 rounded grid place-items-center text-xs font-semibold shrink-0" style={{ background: 'color-mix(in srgb, var(--on-neel) 18%, transparent)' }} aria-hidden>{branch.display.slice(0, 1)}</div>}
           <div className="min-w-0 leading-tight">
             <div className="text-[13px] font-semibold truncate">{branch.display}</div>
             <div className="text-[10.5px] opacity-80 truncate hidden md:block">{branch.tagline}</div>

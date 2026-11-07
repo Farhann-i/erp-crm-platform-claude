@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp, set, go, edit, pendingChanges, runChecks, themeVars, applyPack, toast, discardDraft } from '../lib/app'
-import { PRESETS, PACKS, PENDING_INDUSTRIES, LAYERS, GUARDRAILS, TERM_BASE, type Lang } from '../lib/config'
+import { PRESETS, PACKS, PENDING_INDUSTRIES, LAYERS, GUARDRAILS, TERM_BASE, TRANS, type Lang } from '../lib/config'
 import { contrast } from '../lib/fmt'
 import { Btn, Seg, Toggle, Field, PageHead, Status, Bal, Modal } from '../ui/kit'
 import { Icon } from '../ui/icons'
@@ -187,6 +187,7 @@ function Identity() {
             <Field label="Legal name" hint="Statutory documents only"><input className="inp" value={c.company.legal} onChange={(e) => edit((x) => { x.company.legal = e.target.value })} /></Field>
             <Field label="Display name"><input className="inp" value={c.company.display} onChange={(e) => edit((x) => { x.company.display = e.target.value })} /></Field>
             <Field label="Tagline"><input className="inp" value={c.company.tagline} onChange={(e) => edit((x) => { x.company.tagline = e.target.value })} /></Field>
+            <LogoField />
           </div>
           <div className="panel p-4 space-y-3"><div className="flex items-center justify-between"><h2 className="font-semibold">Branch</h2><select aria-label="Branch" className="inp w-40" value={bid} onChange={(e) => setBid(e.target.value)}>{c.branches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
             <Field label="Legal name"><input className="inp" value={b.legal} onChange={(e) => upB({ legal: e.target.value })} /></Field>
@@ -216,6 +217,8 @@ function Wire({ kind }: { kind: string }) {
     table: <>{box(2, 2, 116, 77)}{lines(6, 10, 7, 108, 10)}</>,
     cards: <>{[0, 1, 2].flatMap((r) => [0, 1, 2].map((q) => <g key={r + '' + q}>{box(2 + q * 40, 4 + r * 25, 36, 21)}{lines(6 + q * 40, 10 + r * 25, 2, 24, 7)}</g>))}</>,
     sheet: <>{box(2, 2, 116, 77)}{[0, 1, 2, 3].map((i) => <g key={i}>{lines(8, 8 + i * 18, 1, 40)}{lines(8, 16 + i * 18, 1, 100)}</g>)}</>,
+    list: <>{[0,1,2,3].map((i)=><g key={i}>{box(2, 2 + i*20, 116, 17)}{lines(6, 7 + i*20, 1, 70)}{box(94, 6 + i*20, 20, 9, true)}</g>)}</>,
+    board: <>{[0,1,2].map((q)=><g key={q}>{box(2 + q*40, 2, 36, 77)}{lines(6 + q*40, 8, 1, 24)}{box(6 + q*40, 16, 28, 14, true)}{box(6 + q*40, 34, 28, 14)}</g>)}</>,
     split: <>{box(2, 2, 56, 77)}{box(62, 2, 56, 77)}{lines(6, 8, 5, 46, 13)}{lines(66, 8, 5, 46, 13)}</>,
   }
   return <svg viewBox="0 0 120 81" className="w-full h-auto" aria-hidden>{c[kind]}</svg>
@@ -227,6 +230,8 @@ function Layouts() {
     { id: 'cashier', title: 'Billing for the cashier', sub: 'CUS-016', who: 'Cashiers and billing operators', open: 'billing', mode: 'counter', opts: [['counter', 'Counter lane', 'Barcode first, large lines and one big Tender button.'], ['tile', 'Tile POS', 'Category tiles, global search and a bill on the right.']] },
     { id: 'party', title: 'Customer and supplier list', sub: 'CUS-020', who: 'Books and Owner', open: 'parties', mode: 'books', opts: [['table', 'Table', 'Dense, sortable, filterable.'], ['cards', 'Cards', 'Names with balance at a glance.']] },
     { id: 'stock', title: 'Stock on hand', sub: 'CUS-020', who: 'Books and Owner', open: 'stock', mode: 'books', opts: [['table', 'Table', 'One row per item, stock per godown.'], ['cards', 'Cards', 'Totals and reorder state per item.']] },
+    { id: 'approvals', title: 'Approvals', sub: 'CUS-020', who: 'Owner and approvers', open: 'approvals', mode: 'owner', opts: [['list', 'List', 'One card per request, newest first.'], ['board', 'Board', 'Pending, Approved and Rejected side by side.']] },
+    { id: 'items', title: 'Item master', sub: 'CUS-020', who: 'Books and Owner', open: 'items', mode: 'books', opts: [['table', 'Table', 'Dense, sortable, bulk actions.'], ['cards', 'Cards', 'Code, rate and stock per item as tiles.']] },
     { id: 'day', title: 'Owner day sheet', sub: 'CUS-020', who: 'Owner', open: 'owner', mode: 'owner', opts: [['sheet', 'Single ruled sheet', 'Questions top to bottom.'], ['split', 'Two columns', 'Money in and out on the left, actions on the right.']] },
   ]
   return (
@@ -248,6 +253,22 @@ function Layouts() {
   )
 }
 
+function LogoField() {
+  const c = useApp((s) => s.draft); const [err, setErr] = useState('')
+  const pick = (f?: File) => {
+    if (!f) return
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(f.type)) return setErr('Use a PNG, JPEG, WebP or SVG image.')
+    if (f.size > 200 * 1024) return setErr(`That file is ${Math.round(f.size / 1024)} KB. Keep the logo under 200 KB.`)
+    const r = new FileReader(); r.onload = () => { setErr(''); edit((x) => { x.company.logo = String(r.result) }); toast('Logo added to the draft. It shows on bills, the title bar and the sign-in screen once you publish.', 'info') }; r.readAsDataURL(f)
+  }
+  return (
+    <Field label="Logo" hint="PNG, JPEG, WebP or SVG, under 200 KB. Prints in black and white on receipts." error={err}>
+      <div className="flex items-center gap-3">{c.company.logo ? <img src={c.company.logo} alt="Current logo" className="h-12 max-w-32 object-contain border border-rule rounded bg-white p-1" /> : <span className="text-xs muted">No logo yet</span>}
+        <input aria-label="Upload logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
+        {c.company.logo && <Btn className="btn-sm" onClick={() => edit((x) => { delete x.company.logo })}>Remove</Btn>}</div>
+    </Field>
+  )
+}
 function Terms() {
   const c = useApp((s) => s.draft)
   const keys = Object.keys(TERM_BASE)
@@ -255,8 +276,11 @@ function Terms() {
     <>
       <PageHead title="Terms and language" sub="Rename what the business calls things. The menu, forms and reports follow. Customer can become patient or guest. Godown can become store room." crumbs={['Admin Studio', 'Terms']} />
       <div className="grid xl:grid-cols-[1fr_380px] gap-5 mx-5">
-        <div className="panel p-4"><table className="tbl"><thead><tr><th>Platform term</th><th>This client says</th></tr></thead><tbody>{keys.map((k) => <tr key={k}><td className="muted">{TERM_BASE[k]}</td><td><input className="inp h-7" aria-label={`Term for ${TERM_BASE[k]}`} value={c.terms[k] ?? ''} onChange={(e) => edit((x) => { x.terms[k] = e.target.value })} /></td></tr>)}</tbody></table>
-          <Btn className="mt-3" onClick={() => edit((x) => { x.terms = { ...TERM_BASE } })}>Reset to platform terms</Btn></div>
+        <div className="panel p-4 space-y-3"><div className="flex flex-wrap items-end gap-3"><Field label="Start from an industry dictionary" hint="Replaces the English words below. Nothing else changes."><select aria-label="Industry dictionary" className="inp w-56" value="" onChange={(e) => { const p = PACKS.find((x) => x.id === e.target.value); if (p) { edit((x) => { x.terms = { ...TERM_BASE, ...(p.terms as Record<string, string>) } }); toast(`${p.name} words loaded into the draft.`, 'info') } }}><option value="" disabled>Choose an industry…</option>{PACKS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field></div>
+          <table className="tbl"><thead><tr><th>Platform term</th><th>English</th><th>മലയാളം</th><th>हिन्दी</th></tr></thead><tbody>{keys.map((k) => { const en = c.terms[k] ?? TERM_BASE[k]; return <tr key={k}><td className="muted">{TERM_BASE[k]}</td><td><input className="inp h-7" aria-label={`Term for ${TERM_BASE[k]}`} value={c.terms[k] ?? ''} onChange={(e) => edit((x) => { x.terms[k] = e.target.value })} /></td>
+            {(['ml', 'hi'] as const).map((l) => <td key={l}><input lang={l} className="inp h-7" aria-label={`${l === 'ml' ? 'Malayalam' : 'Hindi'} for ${TERM_BASE[k]}`} placeholder={TRANS[en]?.[l] ?? en} value={c.termsL?.[l]?.[k] ?? ''} onChange={(e) => edit((x) => { x.termsL = { ...x.termsL, [l]: { ...x.termsL?.[l], [k]: e.target.value } } })} /></td>)}</tr> })}</tbody></table>
+          <p className="text-xs muted">Grey text is our default for that word. Type to override it. Review the Malayalam and Hindi with a native speaker before go-live.</p>
+          <Btn className="mt-3" onClick={() => edit((x) => { x.terms = { ...TERM_BASE }; x.termsL = {} })}>Reset to platform terms</Btn></div>
         <div className="space-y-4">
           <div className="panel p-4"><h2 className="font-semibold mb-2">Language</h2><Seg<Lang> label="Language" value={c.lang} onChange={(l) => edit((x) => (x.lang = l))} opts={[{ id: 'en', label: 'English' }, { id: 'ml', label: 'മലയാളം' }, { id: 'hi', label: 'हिन्दी' }]} /><p className="text-xs muted mt-2">Menus and key buttons are translated in this prototype. Line height rises to 1.55 for Malayalam and Devanagari. Numbers keep lakh and crore grouping.</p></div>
           <div className="panel p-4 text-[13px] space-y-1"><h2 className="font-semibold mb-1">Sample</h2><div>Add {c.terms.customer?.toLowerCase()} · {c.terms.items} master</div><div>Move stock between {c.terms.godowns?.toLowerCase()}</div><div>{c.terms.supplier} payments due</div><div className="num text-left">₹12,45,300 · ₹1,24,53,000</div></div>
