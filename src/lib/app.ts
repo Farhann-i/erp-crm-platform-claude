@@ -1,5 +1,5 @@
 import { createStore } from './store'
-import { defaultConfig, term, PACKS, PRESETS, type Config, type Mode, type PackId, type FieldDef } from './config'
+import { defaultConfig, term, PACKS, PACK_HISTORY, PRESETS, type Config, type Mode, type PackId, type FieldDef } from './config'
 import { SEED_ITEMS, SEED_PARTIES, SEED_LEDGERS, SEED_VOUCHERS, SEED_APPROVALS, SEED_CONFLICTS, SEED_NOTICES, seedInvoices, type Item, type Party, type Ledger, type Invoice, type Voucher, type Approval, type Conflict, type HeldBill, type Notice, type Line } from './data'
 import { contrast, onColor, mix } from './fmt'
 import { tr } from './i18n'
@@ -157,10 +157,41 @@ export function safeMode() {
   set({ published: d, draft: d, version, changes: [{ id: 'ch' + version, at: new Date().toLocaleString('en-IN'), by: 'Super admin', version, summary: ['Safe mode reset'], note: 'Tenant reset to platform default', snapshot: d }, ...s.changes] })
   toast('Safe mode: tenant reset to the platform default. Data was not touched.', 'warn')
 }
+/** What installing a pack would change in the current draft, so the person can review it first. */
+export function packPreview(id: PackId): [string, string, string][] {
+  const pack = PACKS.find((p) => p.id === id)!, c = get().draft, base = defaultConfig().terms as Record<string, string>
+  const out: [string, string, string][] = []
+  Object.keys(base).forEach((k) => { const to = (pack.terms as Record<string, string>)[k] ?? base[k]; const from = c.terms[k] ?? base[k]; if (to !== from) out.push([`Word for "${base[k].toLowerCase()}"`, from, to]) })
+  const pr = (x: string) => PRESETS.find((q) => q.id === x)?.name ?? x
+  if (c.theme.preset !== pack.preset) out.push(['Theme', pr(c.theme.preset), pr(pack.preset)])
+  if (c.layouts.cashier !== pack.cashier) out.push(['Cashier layout', c.layouts.cashier, pack.cashier])
+  const now = new Set(c.modules.filter((m) => m.on).map((m) => m.id))
+  c.modules.forEach((m) => { if (m.locked) return; const want = !pack.modulesOff.includes(m.id); if (want !== now.has(m.id)) out.push([`Module ${m.name}`, now.has(m.id) ? 'on' : 'off', want ? 'on' : 'off']) })
+  ;(['item', 'party'] as const).forEach((e) => {
+    const gone = c.fields[e].filter((f) => f.custom).map((f) => f.label), add = (pack.fields[e] ?? []).map((f) => f.label)
+    gone.filter((x) => !add.includes(x)).forEach((x) => out.push([`${e === 'item' ? 'Item' : 'Party'} field`, x, 'removed']))
+    add.filter((x) => !gone.includes(x)).forEach((x) => out.push([`${e === 'item' ? 'Item' : 'Party'} field`, 'none', x + ' added']))
+  })
+  out.push(['Demo items', `${get().items.length} items`, 'replaced with the pack demo set'])
+  return out
+}
+/** Add the fields a newer pack version brings, keeping everything the tenant added. Demo data is untouched. */
+export function upgradePack(id: PackId) {
+  const pack = PACKS.find((p) => p.id === id)!
+  const from = get().draft.packVer ?? '1.0.0'
+  edit((c) => {
+    c.packVer = pack.version
+    ;(['item', 'party'] as const).forEach((e) => { (pack.fields[e] ?? []).forEach((f) => { if (!c.fields[e].some((x) => x.id === f.id)) c.fields[e].push({ ...f }) }) })
+  })
+  const note = PACK_HISTORY[id]?.find((h) => h.v === pack.version)?.note ?? ''
+  set((s) => ({ rows: { ...s.rows, packlog: [{ id: 'pl' + Date.now(), pack: id, from, to: pack.version, at: new Date().toLocaleString('en-IN'), what: 'Upgraded. ' + note }, ...(s.rows.packlog ?? [])] } }))
+  toast(`${pack.name} pack upgraded from v${from} to v${pack.version} in your draft. Review, then publish.`, 'info')
+}
 export function applyPack(id: PackId) {
   const pack = PACKS.find((p) => p.id === id)!
   edit((c) => {
     c.pack = id
+    c.packVer = pack.version
     c.terms = { ...defaultConfig().terms, ...(pack.terms as Record<string, string>) }
     c.theme = { ...c.theme, preset: pack.preset, custom: false }
     c.layouts.cashier = pack.cashier
@@ -169,7 +200,7 @@ export function applyPack(id: PackId) {
     ;(['item', 'party'] as const).forEach((e) => { c.fields[e] = [...keep(c.fields[e]), ...(pack.fields[e] ?? [])] })
   })
   const items = SEED_ITEMS[id]
-  set({ items, invoices: seedInvoices(items), bill: { partyId: 'c0', lines: [], note: '' } })
+  set((s) => ({ items, invoices: seedInvoices(items), bill: { partyId: 'c0', lines: [], note: '' }, rows: { ...s.rows, packlog: [{ id: 'pl' + Date.now(), pack: id, from: '', to: pack.version, at: new Date().toLocaleString('en-IN'), what: 'Installed' }, ...(s.rows.packlog ?? [])], packsetup: (s.rows.packsetup ?? []).filter((r) => !String(r.id).startsWith(id + ':')) } }))
   toast(`${pack.name} pack v${pack.version} installed as a draft. Review, then publish.`, 'info')
 }
 export function nextNo(doc: string) {

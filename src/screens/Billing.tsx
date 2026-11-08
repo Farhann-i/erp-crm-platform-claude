@@ -7,6 +7,7 @@ import { Btn, Tape, Modal, Money, Field, useT, Bal, Status, type TapeLine } from
 import { Icon } from '../ui/icons'
 import { ctx, select } from '../shell/ctx'
 import { openPrint } from '../ui/BillPrint'
+import { useAllUnits, parseUnits } from '../lib/units'
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 const COLOURS = ['Indigo', 'White', 'Mustard']
@@ -14,6 +15,19 @@ const MATRIX_CATS = ['Shirts', 'Kurtas', 'Jeans', 'Uniform']
 
 function lineFrom(it: Item, qty = 1, label = ''): Line {
   return { itemId: it.id, name: it.name + label, qty, unit: it.unit, rate: it.rate, disc: 0, gst: it.gst, cost: it.cost, rule: it.category === 'Fees' ? 'Fee schedule' : 'Item standard rate' }
+}
+/** Unit chooser on a bill line. Rate and cost convert from the item's base unit; the base quantity is shown beside it. */
+function UnitCell({ l, i }: { l: Line; i: number }) {
+  const all = useAllUnits(), items = useApp((s) => s.items)
+  const it = items.find((x) => x.id === l.itemId)
+  const alt = parseUnits(all.find((r) => r.id === l.itemId)?.units).filter((u) => u.s)
+  if (!it || !alt.length) return <>{l.unit}</>
+  const f = l.f ?? 1
+  const pick = (name: string) => {
+    const u = name === it.unit ? { n: it.unit, f: 1 } : alt.find((x) => x.n === name)!
+    set((s) => ({ bill: { ...s.bill, lines: s.bill.lines.map((x, k) => (k === i ? { ...x, unit: u.n, f: u.f, rate: Math.round(it.rate * u.f), cost: it.cost * u.f, rule: u.f === 1 ? 'Item standard rate' : `Converted from ${it.unit} (x${u.f})` } : x)) } }))
+  }
+  return <span className="flex items-center gap-1"><select aria-label={`Unit line ${i + 1}`} className="inp h-6 w-[4.5rem] px-1" value={l.unit} onChange={(e) => pick(e.target.value)}><option>{it.unit}</option>{alt.map((u) => <option key={u.n}>{u.n}</option>)}</select>{f !== 1 && <span className="text-xs muted whitespace-nowrap">= {l.qty * f} {it.unit}</span>}</span>
 }
 export function useBill() {
   const bill = useApp((s) => s.bill)
@@ -361,7 +375,7 @@ function LedgerSheet({ onPick, tender, hold, scan, inputRef, showHeld }: VP) {
                   <td className="muted">{i + 1}</td>
                   <td><span style={below ? { boxShadow: 'inset 0 -2px 0 var(--haldi)' } : undefined}>{l.name}</span>{below && cost && <span className="text-xs ml-2 muted">Below cost</span>}</td>
                   <td><input aria-label={`Quantity line ${i + 1}`} type="number" className="inp num h-6 text-right" value={l.qty} onChange={(e) => b.qty(i, +e.target.value)} /></td>
-                  <td>{l.unit}{l.unit === 'Box' && <span className="text-xs muted ml-1">={l.qty * 6} Pcs</span>}</td>
+                  <td><UnitCell l={l} i={i} /></td>
                   <td className="num">{inr(l.rate)}<RuleMark l={l} /></td>
                   <td><input aria-label={`Discount line ${i + 1}`} type="number" className="inp num h-6 text-right" value={l.disc || ''} placeholder="0" onChange={(e) => b.disc(i, +e.target.value)} /></td>
                   <td className="num">{l.gst}%</td>

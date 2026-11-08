@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useApp, set, go, edit, pendingChanges, runChecks, themeVars, applyPack, toast, discardDraft } from '../lib/app'
-import { PRESETS, PACKS, PENDING_INDUSTRIES, LAYERS, GUARDRAILS, TERM_BASE, TRANS, type Lang } from '../lib/config'
+import { useApp, set, go, edit, pendingChanges, runChecks, themeVars, applyPack, packPreview, upgradePack, toast, discardDraft } from '../lib/app'
+import { PRESETS, PACKS, PACK_STEPS, PACK_HISTORY, PENDING_INDUSTRIES, LAYERS, GUARDRAILS, TERM_BASE, TRANS, type Lang } from '../lib/config'
 import { contrast } from '../lib/fmt'
 import { Btn, Seg, Toggle, Field, PageHead, Status, Bal, Modal } from '../ui/kit'
 import { Icon } from '../ui/icons'
@@ -87,6 +87,13 @@ function Overview() {
 function Packs() {
   const c = useApp((s) => s.draft)
   const [confirm, setConfirm] = useState<string | null>(null)
+  const log = (useApp((s) => s.rows.packlog) ?? []) as Record<string, string>[]
+  const ticks = (useApp((s) => s.rows.packsetup) ?? []) as Record<string, string | number>[]
+  const cur = PACKS.find((p) => p.id === c.pack)
+  const steps = PACK_STEPS[c.pack] ?? []
+  const done = (i: number) => ticks.some((r) => r.id === `${c.pack}:${i}` && r.done)
+  const tick = (i: number) => set((x) => ({ rows: { ...x.rows, packsetup: [...(x.rows.packsetup ?? []).filter((r) => r.id !== `${c.pack}:${i}`), { id: `${c.pack}:${i}`, done: done(i) ? 0 : 1 }] } }))
+  const upgrade = cur && (c.packVer ?? '1.0.0') !== cur.version
   return (
     <>
       <PageHead title="Industry packs" sub="A pack bundles terminology, theme, modules, fields, forms and print templates and installs as one signed unit." crumbs={['Admin Studio', 'Packs']} />
@@ -106,11 +113,18 @@ function Packs() {
           )
         })}
       </div>
+      {cur && <Sec title={`${cur.name} pack: setup checklist`} sub={`Installed v${c.packVer ?? '1.0.0'}. Tick each step as you finish it. Ticks are kept with this company.`}>
+        {upgrade && <div className="panel p-3 mb-3 flex items-center gap-3 flex-wrap draft-edge"><div className="flex-1 text-[13px]"><b>Upgrade to v{cur.version} is available.</b> {PACK_HISTORY[cur.id]?.find((h) => h.v === cur.version)?.note} Your own fields and data stay as they are.</div><Btn kind="primary" onClick={() => upgradePack(cur.id)}>Upgrade to v{cur.version}</Btn></div>}
+        <ul className="panel divide-y divide-rule max-w-2xl">{steps.map((t, i) => <li key={i}><label className="flex items-center gap-3 px-3 py-2 text-[13px] cursor-pointer"><input type="checkbox" checked={done(i)} onChange={() => tick(i)} /><span className={done(i) ? 'line-through muted' : ''}>{t}</span></label></li>)}</ul>
+        <div className="text-xs muted mt-1">{steps.filter((_, i) => done(i)).length} of {steps.length} done</div>
+      </Sec>}
+      {log.length > 0 && <Sec title="Install and upgrade record" sub="Newest first. Each pack change is also in Change history after you publish."><div className="panel max-w-2xl divide-y divide-rule text-[13px]">{log.slice(0, 8).map((r) => <div key={r.id} className="px-3 py-2 flex justify-between gap-3"><span>{PACKS.find((p) => p.id === r.pack)?.name} {r.from ? `v${r.from} to v${r.to}` : `v${r.to}`} · {r.what}</span><span className="muted shrink-0">{r.at}</span></div>)}</div></Sec>}
       <Sec title="Pending industries" sub="Fourteen more are on the list. They are not drafted yet.">
         <div className="flex flex-wrap gap-1.5">{PENDING_INDUSTRIES.map((x) => <span key={x} className="chip h-7 px-3 bg-sheet">{x}</span>)}</div>
       </Sec>
       <Modal open={!!confirm} onClose={() => setConfirm(null)} title="Install this pack as a draft?" foot={<><Btn onClick={() => setConfirm(null)}>Cancel</Btn><Btn kind="primary" onClick={() => { applyPack(confirm as never); setConfirm(null) }}>Install as draft</Btn></>}>
-        <p>Terminology, theme, modules, fields and the cashier layout change in your draft. Demo items for that industry are loaded. Nothing goes live until you publish, and you can roll back.</p>
+        <p className="mb-2">These are the changes to your draft. Nothing goes live until you publish, and you can roll back.</p>
+        {confirm && <table className="w-full text-[13px]"><thead><tr className="text-left muted text-xs"><th className="font-normal">What</th><th className="font-normal">Now</th><th className="font-normal">After install</th></tr></thead><tbody>{packPreview(confirm as never).map(([a, b, d], i) => <tr key={i} className="border-t border-rule"><td className="py-1 pr-2">{a}</td><td className="pr-2 muted">{b}</td><td>{d}</td></tr>)}</tbody></table>}
       </Modal>
     </>
   )

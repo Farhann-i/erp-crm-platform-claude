@@ -10,7 +10,9 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "lucide-react": "^1.66.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

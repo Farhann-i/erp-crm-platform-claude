@@ -4,6 +4,7 @@ import type { FieldDef } from '../lib/config'
 import { GODOWNS, type Item, type Party } from '../lib/data'
 import { inr, inr0, dmy, today } from '../lib/fmt'
 import { HistoryList, logHist, diff, useDraft, DraftNote } from '../ui/History'
+import { useItemUnits, saveUnits, type UnitDef } from '../lib/units'
 import { Btn, DataTable, Drawer, Field, PageHead, Tabs, Bal, Status, Money, useT, Spark, Toggle } from '../ui/kit'
 import { Icon } from '../ui/icons'
 import { ctx, select } from '../shell/ctx'
@@ -102,14 +103,16 @@ export function ItemMaster() {
   )
 }
 function Units({ it }: { it: Item }) {
-  const [u, setU] = useState([{ n: it.unit, f: 1, s: true, p: true }, { n: 'Box', f: 6, s: false, p: true }, { n: 'Dozen', f: 12, s: false, p: false }])
+  const saved = useItemUnits(it.id)
+  const [u, setU0] = useState<UnitDef[]>(saved.length ? [{ n: it.unit, f: 1, s: true, p: true }, ...saved] : [{ n: it.unit, f: 1, s: true, p: true }, { n: 'Box', f: 6, s: true, p: true }, { n: 'Dozen', f: 12, s: false, p: false }])
+  const setU = (v: UnitDef[]) => { setU0(v); saveUnits(it.id, v.slice(1)) }
   return (
     <div>
       <table className="tbl"><thead><tr><th>Unit</th><th className="text-right">= {it.unit}</th><th>Sale</th><th>Purchase</th><th /></tr></thead><tbody>
         {u.map((x, i) => <tr key={i}><td><input className="inp h-7" aria-label="Unit name" value={x.n} onChange={(e) => setU(u.map((y, k) => (k === i ? { ...y, n: e.target.value } : y)))} /></td><td><input type="number" className="inp num h-7 text-right" aria-label="Factor" disabled={i === 0} value={x.f} onChange={(e) => setU(u.map((y, k) => (k === i ? { ...y, f: +e.target.value } : y)))} /></td><td><input type="radio" name="s" checked={x.s} onChange={() => setU(u.map((y, k) => ({ ...y, s: k === i })))} aria-label="Default sale unit" /></td><td><input type="radio" name="p" checked={x.p} onChange={() => setU(u.map((y, k) => ({ ...y, p: k === i })))} aria-label="Default purchase unit" /></td><td>{i > 0 && <button aria-label="Remove unit" onClick={() => setU(u.filter((_, k) => k !== i))}><Icon n="x" size={13} /></button>}</td></tr>)}
       </tbody></table>
       <Btn className="btn-sm mt-2" icon="plus" disabled={u.length >= 12} onClick={() => setU([...u, { n: '', f: 1, s: false, p: false }])}>Add unit ({u.length} of 12)</Btn>
-      <p className="text-xs muted mt-2">Up to 12 units per item. Billing converts automatically and shows the converted quantity.</p>
+      <p className="text-xs muted mt-2">Up to 12 units per item. Choose the unit on a bill line and the rate and quantity convert from the base unit. Saved with the item.</p>
     </div>
   )
 }
