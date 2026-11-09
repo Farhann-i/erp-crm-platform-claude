@@ -1,5 +1,6 @@
 import { useApp } from '../lib/app'
 import { Trade } from './Trade'
+import { Shop } from './Shop'
 import { Restricted } from '../ui/kit'
 import { RouteCtx, useCan } from '../lib/rights'
 import { Billing, HeldScreen } from './Billing'
@@ -70,7 +71,7 @@ function Inner({ route }: { route: string }) {
   }
   if (route === 'desks') return <Hub />
   if (route === 'prompts') return <Prompts />
-  const P5: Record<string, React.ReactElement> = { trade: <Trade />, variants: <VariantMatrix />, sizecolour: <SizeColour />, voicebill: <VoiceBilling />, scan: <CameraScan />, forecast: <Forecast />, twofactor: <TwoFactor />, rules: <RuleBuilder />, widgets: <WidgetDesigner />, leases: <Leases />, consolidate: <Consolidate />, numgaps: <NumGaps />, auditcheck: <AuditCheck />, forex: <Forex /> }
+  const P5: Record<string, React.ReactElement> = { shop: <Shop />, trade: <Trade />, variants: <VariantMatrix />, sizecolour: <SizeColour />, voicebill: <VoiceBilling />, scan: <CameraScan />, forecast: <Forecast />, twofactor: <TwoFactor />, rules: <RuleBuilder />, widgets: <WidgetDesigner />, leases: <Leases />, consolidate: <Consolidate />, numgaps: <NumGaps />, auditcheck: <AuditCheck />, forex: <Forex /> }
   if (P5[route]) return P5[route]
   if (route === 'packtools') return <PackTools />
   if (route === 'help') return <Help />

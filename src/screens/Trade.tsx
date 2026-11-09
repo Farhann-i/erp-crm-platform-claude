@@ -165,10 +165,19 @@ function RateList() {
     {parsed.some((p) => p.bad) && <p role="alert" className="text-xs text-sindoor">{parsed.filter((p) => p.bad).length} lines will be skipped because the code was not found or the cost is not a number.</p>}</div>
 }
 
+function Contractors() {
+  const inv = useApp((s) => s.invoices), parties = useApp((s) => s.parties).filter((p) => p.kind === 'customer'), paid = useRows('rebates'), tag = useRows('contractors'), [rate, setRate] = useState('1')
+  const is = (id: string) => tag.some((t) => t.id === id)
+  const earned = (id: string) => Math.round(inv.filter((i) => i.partyId === id && i.status === 'posted').reduce((a, i) => a + i.paid, 0) * +rate / 100)
+  const settled = (id: string) => paid.filter((p) => p.id === id).reduce((a, p) => a + +p.amt, 0)
+  return <div className="max-w-3xl space-y-3"><Note>Mark customers who are contractors or plumbers. They earn a rebate on what they have paid. Settling a rebate records it; it is given as a credit on the next bill.</Note>
+    <Field label="Rebate %"><input className="inp num w-24" type="number" step="0.5" min={0} value={rate} onChange={(e) => setRate(e.target.value)} /></Field>
+    <table className="tbl"><thead><tr><th>Customer</th><th>Contractor</th><th className="text-right">Rebate earned</th><th className="text-right">Settled</th><th /></tr></thead><tbody>{parties.map((p) => { const due = earned(p.id) - settled(p.id); return <tr key={p.id}><td>{p.name}</td><td><input type="checkbox" aria-label={`${p.name} is a contractor`} checked={is(p.id)} onChange={() => put('contractors', (t) => (is(p.id) ? t.filter((x) => x.id !== p.id) : [...t, { id: p.id }]))} /></td><td className="num">{is(p.id) ? inr0(earned(p.id)) : ''}</td><td className="num">{is(p.id) ? inr0(settled(p.id)) : ''}</td><td>{is(p.id) && <Btn className="btn-sm" disabled={due <= 0} onClick={() => { put('rebates', (r) => [...r, { id: p.id, amt: due, at: today() }]); toast(`${inr0(due)} rebate settled for ${p.name}.`) }}>Settle {due > 0 ? inr0(due) : ''}</Btn>}</td></tr> })}</tbody></table></div>
+}
 const TABS: [string, string, React.ReactNode, string][] = [
   ['rolls', 'Rolls and cuts', <Rolls />, 'Textile'], ['seasons', 'Seasons', <Seasons />, 'Textile'], ['jobwork', 'Job work', <JobWork />, 'Textile'], ['agents', 'Agent commission', <Agents />, 'Textile'], ['exchange', 'Exchange slip', <Exchange />, 'Textile'],
   ['varstock', 'Variant stock', <VariantStock />, 'Retail'], ['targets', 'Staff targets', <Targets />, 'Retail'], ['phone', 'Phone billing', <PhoneBill />, 'Retail'], ['catalogue', 'Catalogue share', <Catalogue />, 'Retail'],
-  ['sites', 'Site billing', <Sites />, 'Hardware'], ['loads', 'Delivery loads', <Loads />, 'Hardware'], ['ratelist', 'Rate list import', <RateList />, 'Hardware'],
+  ['sites', 'Site billing', <Sites />, 'Hardware'], ['loads', 'Delivery loads', <Loads />, 'Hardware'], ['ratelist', 'Rate list import', <RateList />, 'Hardware'], ['contractors', 'Contractor rebate', <Contractors />, 'Hardware'],
 ]
 export function Trade() {
   const [tab, setTab] = useState('rolls'), cur = TABS.find((t) => t[0] === tab)!
