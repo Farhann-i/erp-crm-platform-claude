@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useApp, set, toast } from '../lib/app'
 import { inr0, today } from '../lib/fmt'
+import { OFFERS, setOfferRule, type OfferRule } from '../lib/offers'
 import { Btn, PageHead, Field, Tabs, Empty } from '../ui/kit'
 
 type Row = Record<string, string | number>
@@ -67,11 +68,12 @@ function Weigh() {
     {!p ? <p role="alert" className="text-xs text-sindoor">PLU {plu} is not in the list.</p> : <div className="panel p-4 text-center space-y-1 font-mono" aria-label="Label preview"><div className="font-semibold">{p[1]}</div><div className="text-xs">{w} kg × ₹{p[2]}/kg</div><div className="text-xl font-bold">{inr0(Math.round(+w * p[2] * 100) / 100)}</div><div className="text-[10px] tracking-[0.3em]">||| || ||| | ||| {plu}</div><div className="text-[10px]">Packed {today()}</div></div>}</div>
 }
 function Offers() {
-  const items = useApp((s) => s.items).slice(0, 6), [cart, setCart] = useState<Record<string, number>>({}), [rule, setRule] = useState('b2g1')
+  const items = useApp((s) => s.items).slice(0, 6), [cart, setCart] = useState<Record<string, number>>({})
+  const rule = String(useRows('offercfg')[0]?.rule ?? 'none')
   const lines = items.filter((i) => cart[i.id]).map((i) => { const q = cart[i.id], gross = i.rate * q; const free = rule === 'b2g1' ? Math.floor(q / 3) : 0, pct = rule === 'pct' && q >= 2 ? 10 : 0; const off = rule === 'b2g1' ? free * i.rate : Math.round(gross * pct / 100); return { i, q, gross, off } })
   const tot = lines.reduce((a, l) => a + l.gross - l.off, 0), saved = lines.reduce((a, l) => a + l.off, 0)
-  return <div className="max-w-lg space-y-3"><Note>Offers apply by themselves as items are added, and the saving is shown on the line.</Note>
-    <Field label="Offer in force"><select className="inp w-64" value={rule} onChange={(e) => setRule(e.target.value)}><option value="b2g1">Buy 2, get 1 free</option><option value="pct">10% off when you take 2 or more</option><option value="none">No offer</option></select></Field>
+  return <div className="max-w-lg space-y-3"><Note>The offer chosen here also applies in the main billing grid, line by line, unless the cashier types a manual discount. Try it below.</Note>
+    <Field label="Offer in force"><select className="inp w-64" value={rule} onChange={(e) => setOfferRule(e.target.value as OfferRule)}>{Object.entries(OFFERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
     <div className="panel divide-y divide-rule">{items.map((i) => <div key={i.id} className="flex items-center gap-2 px-3 py-2 text-[13px]"><span className="flex-1 truncate">{i.name}</span><span className="num muted">{inr0(i.rate)}</span><button aria-label={`Remove one ${i.name}`} className="size-7 border border-rule rounded" onClick={() => setCart({ ...cart, [i.id]: Math.max(0, (cart[i.id] ?? 0) - 1) })}>−</button><span className="num w-5 text-center">{cart[i.id] ?? 0}</span><button aria-label={`Add one ${i.name}`} className="size-7 border border-rule rounded" onClick={() => setCart({ ...cart, [i.id]: (cart[i.id] ?? 0) + 1 })}>+</button></div>)}</div>
     <div className="panel p-3 text-[13px] space-y-1">{lines.map((l) => <div key={l.i.id} className="flex justify-between"><span>{l.q}× {l.i.name}{l.off > 0 && <span className="chip ml-1 border-mehndi text-mehndi">Offer −{inr0(l.off)}</span>}</span><span className="num">{inr0(l.gross - l.off)}</span></div>)}<div className="flex justify-between font-semibold border-t border-rule pt-1"><span>Total {saved > 0 && <span className="text-mehndi font-normal">(you save {inr0(saved)})</span>}</span><span className="num">{inr0(tot)}</span></div></div></div>
 }

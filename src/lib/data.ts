@@ -3,7 +3,7 @@ import type { PackId } from './config'
 export interface Item { id: string; code: string; barcode: string; name: string; hsn: string; gst: number; unit: string; mrp: number; rate: number; cost: number; stock: Record<string, number>; reorder: number; brand: string; category: string; supplierId: string; batch?: string; expiry?: string; extra?: Record<string, string> }
 export interface Party { id: string; name: string; kind: 'customer' | 'supplier'; city: string; phone: string; gstin: string; balance: number; limit: number; risk: 'low' | 'medium' | 'high'; lastPay: string; overdueDays: number; consent: boolean; extra?: Record<string, string> }
 export interface Ledger { id: string; name: string; group: string; bal: number }
-export interface Line { itemId: string; name: string; qty: number; unit: string; rate: number; disc: number; gst: number; cost: number; rule: string; f?: number }
+export interface Line { itemId: string; name: string; qty: number; unit: string; rate: number; disc: number; gst: number; cost: number; rule: string; f?: number; batch?: string; exp?: string }
 export interface Invoice { id: string; no: string; date: string; partyId: string; partyName: string; branch: string; lines: Line[]; sub: number; tax: number; total: number; paid: number; status: 'posted' | 'draft' | 'cancelled'; pay: string; by: string; extra?: number }
 export interface Voucher { id: string; no: string; type: string; date: string; lines: { ledger: string; dr: number; cr: number }[]; narration: string; status: 'posted' | 'draft' | 'reversed'; by: string }
 export interface Approval { id: string; kind: string; title: string; by: string; amount: number; detail: string; due: string; status: 'pending' | 'approved' | 'rejected' }

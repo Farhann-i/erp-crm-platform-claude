@@ -8,6 +8,7 @@ import { Icon } from '../ui/icons'
 import { ctx, select } from '../shell/ctx'
 import { openPrint } from '../ui/BillPrint'
 import { useAllUnits, parseUnits } from '../lib/units'
+import { applyOffer, allocate, consumeBatches, batchesFor } from '../lib/offers'
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 const COLOURS = ['Indigo', 'White', 'Mustard']
@@ -33,12 +34,22 @@ export function useBill() {
   const bill = useApp((s) => s.bill)
   const items = useApp((s) => s.items)
   const parties = useApp((s) => s.parties)
-  const upd = (fn: (l: Line[]) => Line[]) => set((s) => ({ bill: { ...s.bill, lines: fn(s.bill.lines) } }))
+  const upd = (fn: (l: Line[]) => Line[]) => set((s) => ({ bill: { ...s.bill, lines: fn(s.bill.lines).map(applyOffer) } }))
   const party = parties.find((p) => p.id === bill.partyId)!
   return {
     bill, party, items, parties, totals: calc(bill.lines),
     add(it: Item, qty = 1, label = '') {
       const key = it.id + label
+      const { all } = batchesFor(it)
+      if (all.length && !label) {
+        const a = allocate(it, qty, get().bill.lines)
+        if (a.expired) { toast(`${it.name.slice(0, 32)} is past its expiry date in every batch. It cannot be billed.`, 'warn'); return }
+        if (a.short > 0) toast(`Only ${qty - a.short} in date for ${it.name.slice(0, 28)}. ${a.short} short, not added.`, 'warn')
+        if (!a.parts.length) return
+        upd((ls) => a.parts.reduce((acc, { batch, q }) => { const i = acc.findIndex((l) => l.itemId === it.id && l.batch === batch.batch); if (i >= 0) return acc.map((l, k) => (k === i ? { ...l, qty: l.qty + q } : l)); return [...acc, { ...lineFrom(it, q), batch: batch.batch, exp: batch.exp }] }, ls))
+        const first = a.parts[0].batch; const days = Math.round((new Date(first.exp).getTime() - new Date(today()).getTime()) / 864e5)
+        toast(`Batch ${first.batch} first (expires in ${days} days).${a.parts.length > 1 ? ' Spread over ' + a.parts.length + ' batches.' : ''}`, days <= 30 ? 'warn' : 'info')
+      } else
       upd((ls) => { const i = ls.findIndex((l) => l.itemId + (l.name.slice(it.name.length)) === key); if (i >= 0 && !label) return ls.map((l, k) => (k === i ? { ...l, qty: l.qty + qty } : l)); return [...ls, lineFrom(it, qty, label)] })
       select('item', it.id)
       const stock = Object.values(it.stock).reduce((a, b) => a + b, 0)
@@ -230,6 +241,7 @@ export function Tender({ onClose }: { onClose: () => void }) {
       ledgers: s.ledgers.map((l) => (l.name === 'Cash in hand' ? { ...l, bal: l.bal + p.cash } : l.name.startsWith('HDFC') ? { ...l, bal: l.bal + p.upi } : l)),
       pending: s.offline ? s.pending + 1 : s.pending,
     }))
+    consumeBatches(inv.lines)
     logHist('invoices', inv.id, 'Posted', [['Total', '', String(Math.round(total))], ['Paid', '', String(Math.round(inv.paid))]])
     bumpNo('Sales invoice')
     b.clear(); onClose()
@@ -373,7 +385,7 @@ function LedgerSheet({ onPick, tender, hold, scan, inputRef, showHeld }: VP) {
               return (
                 <tr key={i} onClick={() => select('item', l.itemId)}>
                   <td className="muted">{i + 1}</td>
-                  <td><span style={below ? { boxShadow: 'inset 0 -2px 0 var(--haldi)' } : undefined}>{l.name}</span>{below && cost && <span className="text-xs ml-2 muted">Below cost</span>}</td>
+                  <td><span style={below ? { boxShadow: 'inset 0 -2px 0 var(--haldi)' } : undefined}>{l.name}</span>{l.batch && <span className="text-xs muted ml-2">Batch {l.batch}, expires {l.exp}</span>}{below && cost && <span className="text-xs ml-2 muted">Below cost</span>}</td>
                   <td><input aria-label={`Quantity line ${i + 1}`} type="number" className="inp num h-6 text-right" value={l.qty} onChange={(e) => b.qty(i, +e.target.value)} /></td>
                   <td><UnitCell l={l} i={i} /></td>
                   <td className="num">{inr(l.rate)}<RuleMark l={l} /></td>
